@@ -251,7 +251,9 @@ function createVolcengineFullRequest(config: TranscriptionConfig, sessionId: str
         enable_nonstream: true,
         show_utterances: true,
         enable_itn: true,
-        enable_punc: true
+        enable_punc: true,
+        enable_ddc: true,
+        end_window_size: 1000
       }
     })
   )
