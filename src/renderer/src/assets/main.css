@@ -1,0 +1,84 @@
+@import './base.css';
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply text-foreground;
+  }
+}
+
+#app-header {
+  @apply h-9 bg-gray-700/80 text-white;
+  -webkit-app-region: drag;
+  .actions {
+    -webkit-app-region: no-drag;
+  }
+}
+
+#app-content {
+  @apply h-[calc(100vh-36px)] overflow-y-auto bg-gray-500;
+}
+
+.chat-workspace {
+  @apply absolute inset-x-0 bottom-0 top-9 flex min-h-0 flex-col bg-gray-500;
+}
+
+.chat-message-list {
+  @apply min-h-0 flex-1 overflow-y-auto overscroll-contain;
+  scrollbar-gutter: stable;
+}
+
+.chat-composer-band {
+  @apply shrink-0 border-t border-white/10 bg-gray-700/75 text-white;
+}
+
+.transcription-scroll {
+  overflow: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.transcription-scroll:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+.transcription-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.transcription-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+}
+.transcription-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.overlay-toolbar {
+  @apply flex h-[52px] items-center gap-1 rounded-md bg-gray-700/80 p-2 text-white;
+  -webkit-app-region: no-drag;
+}
+
+.overlay-toolbar button {
+  @apply relative size-8 shrink-0 cursor-default overflow-hidden hover:bg-white/15 hover:text-white;
+}
+
+/* Fills up over the dwell time, so hover-to-trigger is visible before it fires */
+.dwell-progress {
+  @apply pointer-events-none absolute inset-x-0 bottom-0 h-0.5 origin-left bg-white/80;
+  animation: dwell-fill linear forwards;
+}
+
+@keyframes dwell-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* The toolbar window holds nothing but the toolbar, so it must never scroll */
+body:has(.overlay-toolbar-root) {
+  overflow: hidden;
+}
