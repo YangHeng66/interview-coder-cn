@@ -4,8 +4,14 @@ import {
   DEEPSEEK_API_BASE_URL,
   DEEPSEEK_DEFAULT_MODEL,
   DEFAULT_CHAT_SYSTEM_PROMPT,
+  DEFAULT_DASHSCOPE_ASR_MODEL,
+  DEFAULT_DASHSCOPE_ASR_WS_URL,
+  DEFAULT_VOLCENGINE_ASR_MODEL,
+  DEFAULT_VOLCENGINE_ASR_RESOURCE_ID,
+  DEFAULT_VOLCENGINE_ASR_WS_URL,
   type ApiProtocol,
-  type ChatProvider
+  type ChatProvider,
+  type TranscriptionProvider
 } from '../preload/contracts'
 
 ipcMain.handle('getAppSettings', () => {
@@ -69,7 +75,14 @@ export const settings = {
   toolbarHoverDelay: 0,
   screenshotAutoSave: false,
   screenshotDir: '',
+  transcriptionProvider: 'dashscope' as TranscriptionProvider,
   dashscopeApiKey: '',
+  dashscopeAsrModel: DEFAULT_DASHSCOPE_ASR_MODEL,
+  dashscopeAsrWsUrl: DEFAULT_DASHSCOPE_ASR_WS_URL,
+  volcengineAsrApiKey: '',
+  volcengineAsrModel: DEFAULT_VOLCENGINE_ASR_MODEL,
+  volcengineAsrResourceId: DEFAULT_VOLCENGINE_ASR_RESOURCE_ID,
+  volcengineAsrWsUrl: DEFAULT_VOLCENGINE_ASR_WS_URL,
   hideDockIcon: false,
   audioInputDeviceId: '',
   audioOutputDeviceId: ''

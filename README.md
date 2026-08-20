@@ -98,12 +98,20 @@ MODEL="gpt-5-mini"
 
 ### 5. 配置语音转录（可选）
 
-语音转录使用阿里云百炼 Fun-ASR，需要单独的百炼平台 API Key：
+语音转录可选择阿里云百炼或火山引擎豆包，两套凭据会分别保存，切换服务商不会覆盖原有 Key：
 
-1. 在[百炼平台](https://bailian.console.aliyun.com/cn-beijing?tab=model#/api-key)创建 API Key
-2. 在「设置 -> 语音转录」中填写 API Key
-3. 选择系统音频或麦克风作为输入设备
+1. 创建所选服务商的 API Key：
+   - 阿里云百炼：[创建或查看 API Key](https://bailian.console.aliyun.com/cn-beijing?tab=model#/api-key)
+   - 火山引擎豆包：[创建或查看 API Key](https://console.volcengine.com/speech/new/setting/apikeys)
+2. 在「设置 -> 语音转录」中选择语音服务商并填写对应的 API Key
+3. 按需修改模型、资源 ID 和 WebSocket 地址，然后选择系统音频或麦克风作为输入设备
 4. 使用快捷键开始转录，随后随截图提交或单独发送到文字对话
+
+百炼默认使用 `fun-asr-realtime`。豆包默认使用流式语音识别 2.0 小时版资源
+`volc.seedasr.sauc.duration` 和优化流式接口 `bigmodel_async`。
+
+火山引擎当前为新用户赠送 20 小时流式语音识别 2.0 音频处理时长。赠送规则、有效期和
+实际到账额度可能调整，请以豆包语音控制台显示为准。
 
 ## 默认快捷键
 
@@ -166,7 +174,7 @@ git push origin v1.8.0
 
 - 截图会发送到你配置的截图模型服务商
 - 文字消息和附件内容会发送到你配置的文字对话服务商
-- 启用语音转录后，音频数据会发送到阿里云百炼
+- 启用语音转录后，音频数据会发送到当前选择的百炼或火山引擎豆包服务
 - API Key 和应用设置保存在本机，请勿提交 `.env`、日志或任何真实密钥
 - 内容保护的实际效果受操作系统、会议软件和捕获方式影响，请在正式使用前使用目标环境自行测试
 

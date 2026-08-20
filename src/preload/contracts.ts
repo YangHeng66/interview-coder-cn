@@ -6,6 +6,75 @@ export type AssistantMode = 'screenshot' | 'chat'
 
 export type ChatMessageSource = 'typed' | 'transcription'
 
+export type TranscriptionProvider = 'dashscope' | 'volcengine'
+
+export const DEFAULT_DASHSCOPE_ASR_MODEL = 'fun-asr-realtime'
+export const DEFAULT_DASHSCOPE_ASR_WS_URL = 'wss://dashscope.aliyuncs.com/api-ws/v1/inference/'
+export const DEFAULT_VOLCENGINE_ASR_MODEL = 'bigmodel'
+export const DEFAULT_VOLCENGINE_ASR_RESOURCE_ID = 'volc.seedasr.sauc.duration'
+export const DEFAULT_VOLCENGINE_ASR_WS_URL =
+  'wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async'
+
+export type TranscriptionSettings = {
+  transcriptionProvider: TranscriptionProvider
+  dashscopeApiKey: string
+  dashscopeAsrModel: string
+  dashscopeAsrWsUrl: string
+  volcengineAsrApiKey: string
+  volcengineAsrModel: string
+  volcengineAsrResourceId: string
+  volcengineAsrWsUrl: string
+}
+
+export type TranscriptionConfig =
+  | {
+      provider: 'dashscope'
+      apiKey: string
+      model: string
+      wsUrl: string
+    }
+  | {
+      provider: 'volcengine'
+      apiKey: string
+      model: string
+      resourceId: string
+      wsUrl: string
+    }
+
+export function createTranscriptionConfig(settings: TranscriptionSettings): TranscriptionConfig {
+  if (settings.transcriptionProvider === 'volcengine') {
+    return {
+      provider: 'volcengine',
+      apiKey: settings.volcengineAsrApiKey.trim(),
+      model: settings.volcengineAsrModel.trim(),
+      resourceId: settings.volcengineAsrResourceId.trim(),
+      wsUrl: settings.volcengineAsrWsUrl.trim()
+    }
+  }
+
+  return {
+    provider: 'dashscope',
+    apiKey: settings.dashscopeApiKey.trim(),
+    model: settings.dashscopeAsrModel.trim(),
+    wsUrl: settings.dashscopeAsrWsUrl.trim()
+  }
+}
+
+export function getTranscriptionConfigError(config: TranscriptionConfig): string | null {
+  const providerName = config.provider === 'dashscope' ? '百炼平台' : '豆包语音'
+  if (!config.apiKey) return `请先在设置中配置${providerName} API Key`
+  if (!config.model) return `请先在设置中配置${providerName}模型`
+  if (config.provider === 'volcengine' && !config.resourceId) {
+    return '请先在设置中配置豆包语音资源 ID'
+  }
+  if (!config.wsUrl) return `请先在设置中配置${providerName} WebSocket 地址`
+  return null
+}
+
+export function isTranscriptionConfigured(settings: TranscriptionSettings): boolean {
+  return getTranscriptionConfigError(createTranscriptionConfig(settings)) === null
+}
+
 export type ChatDocument = {
   id: string
   name: string

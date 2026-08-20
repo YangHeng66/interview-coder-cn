@@ -16,7 +16,11 @@ import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useChatStore, type ChatMessage } from '@/lib/store/chat'
-import { useSettingsStore } from '@/lib/store/settings'
+import {
+  createTranscriptionConfig,
+  getTranscriptionConfigError,
+  useSettingsStore
+} from '@/lib/store/settings'
 import { useTranscriptionStore } from '@/lib/store/transcription'
 import {
   CHAT_DOCUMENT_ACCEPT,
@@ -150,9 +154,7 @@ function ChatMessageItem({
               ))}
             </div>
           )}
-          {message.content && (
-            <p className="whitespace-pre-wrap break-words">{message.content}</p>
-          )}
+          {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
         </div>
       </div>
     )
@@ -217,7 +219,9 @@ function ChatComposer({
   const [documents, setDocuments] = useState<ChatDocument[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { isTranscribing, transcriptionText } = useTranscriptionStore()
-  const dashscopeApiKey = useSettingsStore((state) => state.dashscopeApiKey)
+  const transcriptionConfigError = useSettingsStore((state) =>
+    getTranscriptionConfigError(createTranscriptionConfig(state))
+  )
   const setErrorMessage = useChatStore((state) => state.setErrorMessage)
 
   const sendDraft = async () => {
@@ -318,7 +322,9 @@ function ChatComposer({
 
         {(isTranscribing || transcriptionText) && (
           <div className="mb-2 flex min-h-8 items-start gap-2 border-b border-white/10 pb-2">
-            <Mic className={`mt-1 size-4 shrink-0 ${isTranscribing ? 'text-green-300' : 'text-gray-300'}`} />
+            <Mic
+              className={`mt-1 size-4 shrink-0 ${isTranscribing ? 'text-green-300' : 'text-gray-300'}`}
+            />
             <div className="max-h-[4.2em] min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-[1.4em] text-gray-100/85">
               {transcriptionText || '等待语音输入...'}
             </div>
@@ -364,7 +370,7 @@ function ChatComposer({
             }`}
             onClick={onToggleTranscription}
             aria-label={isTranscribing ? '停止语音识别' : '开始语音识别'}
-            title={dashscopeApiKey ? undefined : '请先配置百炼平台 API Key'}
+            title={transcriptionConfigError ?? undefined}
           >
             {isTranscribing ? <MicOff className="size-4" /> : <Mic className="size-4" />}
           </Button>

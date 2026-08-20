@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import ShortcutRenderer from '@/components/ShortcutRenderer'
 import { isModifierKey, getShortcutAccelerator } from '@/lib/utils/keyboard'
 import { useShortcutsStore } from '@/lib/store/shortcuts'
-import { useSettingsStore } from '@/lib/store/settings'
+import { isTranscriptionConfigured, useSettingsStore } from '@/lib/store/settings'
 
 const ShortcutsContext = createContext<{
   recordingAction: string | null
@@ -16,7 +16,7 @@ const ShortcutsContext = createContext<{
 
 export function CustomShortcuts() {
   const { shortcuts, updateShortcut } = useShortcutsStore()
-  const { dashscopeApiKey } = useSettingsStore()
+  const transcriptionConfigured = useSettingsStore((state) => isTranscriptionConfigured(state))
   const [recordingAction, setRecordingAction] = useState<string | null>(null)
 
   const onShortcutChange = useCallback(
@@ -100,19 +100,19 @@ export function CustomShortcuts() {
             label="语音转录"
             description="开始/暂停实时语音转录"
             shortcut="toggleTranscription"
-            disabled={!dashscopeApiKey}
+            disabled={!transcriptionConfigured}
           />
           <Shortcut
             label="清除转录文本"
             description="清除已转录的文本（不会提交给AI）"
             shortcut="clearTranscription"
-            disabled={!dashscopeApiKey}
+            disabled={!transcriptionConfigured}
           />
           <Shortcut
             label="发送语音到文字对话"
             description="保持识别运行，将当前未发送的转录作为独立消息提交"
             shortcut="sendTranscriptionToChat"
-            disabled={!dashscopeApiKey}
+            disabled={!transcriptionConfigured}
           />
         </div>
 

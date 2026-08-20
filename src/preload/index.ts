@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { AppSettings } from '../main/settings'
 import type { AppState } from '../main/state'
-import type { ChatDocument, ChatEvent, ChatRequestResult } from './contracts'
+import type { ChatDocument, ChatEvent, ChatRequestResult, TranscriptionConfig } from './contracts'
 
 // Custom APIs for renderer
 const api = {
@@ -194,7 +194,8 @@ const api = {
   selectScreenshotDir: () => ipcRenderer.invoke('selectScreenshotDir') as Promise<string | null>,
 
   // Transcription
-  startTranscription: (apiKey: string) => ipcRenderer.invoke('start-transcription', apiKey),
+  startTranscription: (config: TranscriptionConfig) =>
+    ipcRenderer.invoke('start-transcription', config),
   stopTranscription: () => ipcRenderer.invoke('stop-transcription'),
   sendTranscriptionAudioChunk: (chunk: ArrayBuffer) =>
     ipcRenderer.send('transcription-audio-chunk', chunk),

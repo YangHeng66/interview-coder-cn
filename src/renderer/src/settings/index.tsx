@@ -37,7 +37,8 @@ import {
   OPACITY_MAX,
   OPACITY_STEP,
   type ApiProtocol,
-  type ChatProvider
+  type ChatProvider,
+  type TranscriptionProvider
 } from '@/lib/store/settings'
 import {
   DEEPSEEK_API_BASE_URL,
@@ -75,7 +76,14 @@ export default function SettingsPage() {
     activeSceneId,
     screenshotAutoSave,
     screenshotDir,
+    transcriptionProvider,
     dashscopeApiKey,
+    dashscopeAsrModel,
+    dashscopeAsrWsUrl,
+    volcengineAsrApiKey,
+    volcengineAsrModel,
+    volcengineAsrResourceId,
+    volcengineAsrWsUrl,
     audioInputDeviceId,
     audioOutputDeviceId,
     hideDockIcon,
@@ -88,6 +96,7 @@ export default function SettingsPage() {
   const [showApiKey, setShowApiKey] = useState(false)
   const [showChatApiKey, setShowChatApiKey] = useState(false)
   const [showDashscopeApiKey, setShowDashscopeApiKey] = useState(false)
+  const [showVolcengineApiKey, setShowVolcengineApiKey] = useState(false)
   const [addSceneOpen, setAddSceneOpen] = useState(false)
   const [newSceneName, setNewSceneName] = useState('')
   const [sceneToDelete, setSceneToDelete] = useState<string | null>(null)
@@ -279,9 +288,7 @@ export default function SettingsPage() {
               <Select
                 value={chatProvider === 'deepseek' ? 'chat-completions' : chatApiProtocol}
                 disabled={chatProvider === 'deepseek'}
-                onValueChange={(value) =>
-                  updateSetting('chatApiProtocol', value as ApiProtocol)
-                }
+                onValueChange={(value) => updateSetting('chatApiProtocol', value as ApiProtocol)}
               >
                 <SelectTrigger id="chat-api-protocol" className="w-60 bg-white">
                   <SelectValue />
@@ -301,9 +308,7 @@ export default function SettingsPage() {
                 id="chat-api-base-url"
                 type="text"
                 disabled={chatProvider === 'deepseek'}
-                value={
-                  chatProvider === 'deepseek' ? DEEPSEEK_API_BASE_URL : chatApiBaseURL
-                }
+                value={chatProvider === 'deepseek' ? DEEPSEEK_API_BASE_URL : chatApiBaseURL}
                 onChange={(e) => updateSetting('chatApiBaseURL', e.target.value)}
                 onBlur={(e) => updateSetting('chatApiBaseURL', e.target.value.trim())}
                 className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
@@ -336,11 +341,7 @@ export default function SettingsPage() {
                   className="border border-l-0 rounded-l-none rounded-r-md h-9 w-9 hover:border-none"
                   aria-label={showChatApiKey ? '隐藏对话 API Key' : '显示对话 API Key'}
                 >
-                  {showChatApiKey ? (
-                    <Eye className="h-4 w-4" />
-                  ) : (
-                    <EyeOff className="h-4 w-4" />
-                  )}
+                  {showChatApiKey ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
@@ -379,43 +380,184 @@ export default function SettingsPage() {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">
-                百炼平台 API Key
-                <span className="ml-2 text-xs font-light">
-                  从阿里云
-                  <a
-                    href="https://bailian.console.aliyun.com/cn-beijing?tab=model#/api-key"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-0.5 text-blue-700 hover:underline"
-                  >
-                    百炼平台
-                  </a>
-                  获取，如不需要语音转录功能可跳过
-                </span>
+              <label htmlFor="transcription-provider" className="text-sm font-medium">
+                语音服务商
               </label>
-              <div className="flex items-center w-60">
-                <input
-                  type={showDashscopeApiKey ? 'text' : 'password'}
-                  value={dashscopeApiKey}
-                  onChange={(e) => updateSetting('dashscopeApiKey', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="输入百炼平台 API Key"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowDashscopeApiKey(!showDashscopeApiKey)}
-                  className="border border-l-0 rounded-l-none rounded-r-md h-9 w-9 hover:border-none"
-                >
-                  {showDashscopeApiKey ? (
-                    <Eye className="h-4 w-4" />
-                  ) : (
-                    <EyeOff className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+              <Select
+                value={transcriptionProvider}
+                onValueChange={(value) =>
+                  updateSetting('transcriptionProvider', value as TranscriptionProvider)
+                }
+              >
+                <SelectTrigger id="transcription-provider" className="w-60 bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dashscope">阿里云百炼</SelectItem>
+                  <SelectItem value="volcengine">火山引擎豆包</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {transcriptionProvider === 'dashscope' ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="dashscope-api-key" className="text-sm font-medium">
+                    百炼平台 API Key
+                    <a
+                      href="https://bailian.console.aliyun.com/cn-beijing?tab=model#/api-key"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 text-xs font-light text-blue-700 hover:underline"
+                    >
+                      获取 Key
+                    </a>
+                  </label>
+                  <div className="flex w-60 items-center">
+                    <input
+                      id="dashscope-api-key"
+                      type={showDashscopeApiKey ? 'text' : 'password'}
+                      value={dashscopeApiKey}
+                      onChange={(e) => updateSetting('dashscopeApiKey', e.target.value)}
+                      onBlur={(e) => updateSetting('dashscopeApiKey', e.target.value.trim())}
+                      className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="输入百炼平台 API Key"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowDashscopeApiKey(!showDashscopeApiKey)}
+                      className="border border-l-0 rounded-l-none rounded-r-md h-9 w-9 hover:border-none"
+                      aria-label={showDashscopeApiKey ? '隐藏百炼 API Key' : '显示百炼 API Key'}
+                    >
+                      {showDashscopeApiKey ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label htmlFor="dashscope-asr-model" className="text-sm font-medium">
+                    模型名称
+                  </label>
+                  <input
+                    id="dashscope-asr-model"
+                    type="text"
+                    value={dashscopeAsrModel}
+                    onChange={(e) => updateSetting('dashscopeAsrModel', e.target.value)}
+                    onBlur={(e) => updateSetting('dashscopeAsrModel', e.target.value.trim())}
+                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="fun-asr-realtime"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label htmlFor="dashscope-asr-ws-url" className="text-sm font-medium">
+                    WebSocket 地址
+                  </label>
+                  <input
+                    id="dashscope-asr-ws-url"
+                    type="text"
+                    value={dashscopeAsrWsUrl}
+                    onChange={(e) => updateSetting('dashscopeAsrWsUrl', e.target.value)}
+                    onBlur={(e) => updateSetting('dashscopeAsrWsUrl', e.target.value.trim())}
+                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="wss://dashscope.aliyuncs.com/..."
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="volcengine-asr-api-key" className="text-sm font-medium">
+                    豆包语音 API Key
+                    <a
+                      href="https://console.volcengine.com/speech/new/setting/apikeys?projectName=default"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 text-xs font-light text-blue-700 hover:underline"
+                    >
+                      获取 Key
+                    </a>
+                  </label>
+                  <div className="flex w-60 items-center">
+                    <input
+                      id="volcengine-asr-api-key"
+                      type={showVolcengineApiKey ? 'text' : 'password'}
+                      value={volcengineAsrApiKey}
+                      onChange={(e) => updateSetting('volcengineAsrApiKey', e.target.value)}
+                      onBlur={(e) => updateSetting('volcengineAsrApiKey', e.target.value.trim())}
+                      className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="输入豆包语音 API Key"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowVolcengineApiKey(!showVolcengineApiKey)}
+                      className="border border-l-0 rounded-l-none rounded-r-md h-9 w-9 hover:border-none"
+                      aria-label={showVolcengineApiKey ? '隐藏豆包 API Key' : '显示豆包 API Key'}
+                    >
+                      {showVolcengineApiKey ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label htmlFor="volcengine-asr-model" className="text-sm font-medium">
+                    模型名称
+                  </label>
+                  <input
+                    id="volcengine-asr-model"
+                    type="text"
+                    value={volcengineAsrModel}
+                    onChange={(e) => updateSetting('volcengineAsrModel', e.target.value)}
+                    onBlur={(e) => updateSetting('volcengineAsrModel', e.target.value.trim())}
+                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="bigmodel"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label htmlFor="volcengine-asr-resource-id" className="text-sm font-medium">
+                    资源 ID
+                    <span className="ml-2 text-xs font-light">默认 ASR 2.0 小时版</span>
+                  </label>
+                  <input
+                    id="volcengine-asr-resource-id"
+                    type="text"
+                    value={volcengineAsrResourceId}
+                    onChange={(e) => updateSetting('volcengineAsrResourceId', e.target.value)}
+                    onBlur={(e) => updateSetting('volcengineAsrResourceId', e.target.value.trim())}
+                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="volc.seedasr.sauc.duration"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label htmlFor="volcengine-asr-ws-url" className="text-sm font-medium">
+                    WebSocket 地址
+                  </label>
+                  <input
+                    id="volcengine-asr-ws-url"
+                    type="text"
+                    value={volcengineAsrWsUrl}
+                    onChange={(e) => updateSetting('volcengineAsrWsUrl', e.target.value)}
+                    onBlur={(e) => updateSetting('volcengineAsrWsUrl', e.target.value.trim())}
+                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="wss://openspeech.bytedance.com/..."
+                  />
+                </div>
+              </>
+            )}
 
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">

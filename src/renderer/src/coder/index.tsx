@@ -1,5 +1,9 @@
 import { useCallback, useEffect } from 'react'
-import { useSettingsStore } from '@/lib/store/settings'
+import {
+  createTranscriptionConfig,
+  getTranscriptionConfigError,
+  useSettingsStore
+} from '@/lib/store/settings'
 import { useAppStore } from '@/lib/store/app'
 import { useTranscriptionStore } from '@/lib/store/transcription'
 import { useSolutionStore } from '@/lib/store/solution'
@@ -14,7 +18,7 @@ import { TranscriptionBar } from './TranscriptionBar'
 import { ChatWorkspace } from './ChatWorkspace'
 
 export default function CoderPage() {
-  const { opacity, dashscopeApiKey, apiKey, chatApiKey, chatModel } = useSettingsStore()
+  const { opacity, apiKey, chatApiKey, chatModel } = useSettingsStore()
   const { assistantMode, syncAppState, setAssistantMode } = useAppStore()
   const { isTranscribing, setIsTranscribing, setTranscriptionText, clearText } =
     useTranscriptionStore()
@@ -40,22 +44,25 @@ export default function CoderPage() {
       return
     }
 
-    if (!dashscopeApiKey) {
-      showModeError('请先在设置中配置百炼平台 API Key')
+    const transcriptionConfig = createTranscriptionConfig(useSettingsStore.getState())
+    const configError = getTranscriptionConfigError(transcriptionConfig)
+    if (configError) {
+      showModeError(configError)
       return
     }
 
     try {
       await startAudioCapture()
-      await window.api.startTranscription(dashscopeApiKey)
+      await window.api.startTranscription(transcriptionConfig)
       setIsTranscribing(true)
       showModeError(null)
     } catch (error) {
       console.error('Failed to start transcription:', error)
       stopAudioCapture()
-      showModeError('启动语音转录失败，请检查系统音频权限')
+      const detail = error instanceof Error ? error.message : String(error)
+      showModeError(`启动语音转录失败：${detail}`)
     }
-  }, [dashscopeApiKey, isTranscribing, setIsTranscribing, showModeError])
+  }, [isTranscribing, setIsTranscribing, showModeError])
 
   useEffect(() => {
     document.body.style.opacity = opacity.toString()
@@ -74,7 +81,8 @@ export default function CoderPage() {
   }, [])
 
   useEffect(() => {
-    const initialMode = !apiKey.trim() && chatApiKey.trim() && chatModel.trim() ? 'chat' : assistantMode
+    const initialMode =
+      !apiKey.trim() && chatApiKey.trim() && chatModel.trim() ? 'chat' : assistantMode
     setAssistantMode(initialMode)
     window.api.updateAppState({ inCoderPage: true, assistantMode: initialMode })
     return () => {
@@ -118,6 +126,7 @@ export default function CoderPage() {
     })
     window.api.onTranscriptionStopped(() => {
       setIsTranscribing(false)
+      stopAudioCapture()
     })
     window.api.onTranscriptionCleared(() => {
       clearText()

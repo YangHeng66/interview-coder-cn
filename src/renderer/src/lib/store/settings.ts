@@ -7,11 +7,27 @@ import {
   DEEPSEEK_API_BASE_URL,
   DEEPSEEK_DEFAULT_MODEL,
   DEFAULT_CHAT_SYSTEM_PROMPT,
+  DEFAULT_DASHSCOPE_ASR_MODEL,
+  DEFAULT_DASHSCOPE_ASR_WS_URL,
+  DEFAULT_VOLCENGINE_ASR_MODEL,
+  DEFAULT_VOLCENGINE_ASR_RESOURCE_ID,
+  DEFAULT_VOLCENGINE_ASR_WS_URL,
   type ApiProtocol,
-  type ChatProvider
+  type ChatProvider,
+  type TranscriptionProvider
 } from '../../../../preload/contracts'
 
-export type { ApiProtocol, ChatProvider } from '../../../../preload/contracts'
+export {
+  createTranscriptionConfig,
+  getTranscriptionConfigError,
+  isTranscriptionConfigured
+} from '../../../../preload/contracts'
+export type {
+  ApiProtocol,
+  ChatProvider,
+  TranscriptionConfig,
+  TranscriptionProvider
+} from '../../../../preload/contracts'
 
 export interface PromptScene {
   id: string
@@ -62,7 +78,7 @@ export const OPACITY_MIN = 0.1
 export const OPACITY_MAX = 1
 export const OPACITY_STEP = 0.05
 
-interface Settings {
+export interface Settings {
   // theme: 'light' | 'dark'an
   apiProtocol: ApiProtocol
   apiBaseURL: string
@@ -91,7 +107,14 @@ interface Settings {
   screenshotAutoSave: boolean
   screenshotDir: string
 
+  transcriptionProvider: TranscriptionProvider
   dashscopeApiKey: string
+  dashscopeAsrModel: string
+  dashscopeAsrWsUrl: string
+  volcengineAsrApiKey: string
+  volcengineAsrModel: string
+  volcengineAsrResourceId: string
+  volcengineAsrWsUrl: string
 
   hideDockIcon: boolean
 
@@ -134,7 +157,14 @@ const defaultSettings: Settings = {
   screenshotAutoSave: false,
   screenshotDir: '',
 
+  transcriptionProvider: 'dashscope',
   dashscopeApiKey: '',
+  dashscopeAsrModel: DEFAULT_DASHSCOPE_ASR_MODEL,
+  dashscopeAsrWsUrl: DEFAULT_DASHSCOPE_ASR_WS_URL,
+  volcengineAsrApiKey: '',
+  volcengineAsrModel: DEFAULT_VOLCENGINE_ASR_MODEL,
+  volcengineAsrResourceId: DEFAULT_VOLCENGINE_ASR_RESOURCE_ID,
+  volcengineAsrWsUrl: DEFAULT_VOLCENGINE_ASR_WS_URL,
 
   hideDockIcon: false,
 
@@ -201,11 +231,20 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'interview-coder-settings',
-      version: 10,
+      version: 11,
       migrate: (persisted, version) => {
         const state = persisted as Partial<Settings>
         // Drop the legacy codeLanguage field (language now lives in the prompt text)
         delete (state as Record<string, unknown>).codeLanguage
+        if (version < 11) {
+          state.transcriptionProvider = 'dashscope'
+          state.dashscopeAsrModel = DEFAULT_DASHSCOPE_ASR_MODEL
+          state.dashscopeAsrWsUrl = DEFAULT_DASHSCOPE_ASR_WS_URL
+          state.volcengineAsrApiKey = ''
+          state.volcengineAsrModel = DEFAULT_VOLCENGINE_ASR_MODEL
+          state.volcengineAsrResourceId = DEFAULT_VOLCENGINE_ASR_RESOURCE_ID
+          state.volcengineAsrWsUrl = DEFAULT_VOLCENGINE_ASR_WS_URL
+        }
         if (version < 10) {
           state.chatProvider = 'deepseek'
           state.chatApiProtocol = 'chat-completions'
