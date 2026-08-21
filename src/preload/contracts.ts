@@ -1,5 +1,32 @@
 export type ApiProtocol = 'chat-completions' | 'responses'
 
+export const THINKING_LEVELS = ['auto', 'none', 'minimal', 'low', 'medium', 'high'] as const
+
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number]
+
+const DEFAULT_MODEL_THINKING_LEVELS: readonly ThinkingLevel[] = [
+  'auto',
+  'minimal',
+  'low',
+  'medium',
+  'high'
+]
+const GPT_56_THINKING_LEVELS: readonly ThinkingLevel[] = ['auto', 'none', 'low', 'medium', 'high']
+
+function isGpt56Model(model: string): boolean {
+  return /^gpt-5\.6(?:$|-)/i.test(model.trim())
+}
+
+export function getThinkingLevelsForModel(model: string): readonly ThinkingLevel[] {
+  return isGpt56Model(model) ? GPT_56_THINKING_LEVELS : DEFAULT_MODEL_THINKING_LEVELS
+}
+
+export function normalizeThinkingLevelForModel(model: string, level: ThinkingLevel): ThinkingLevel {
+  // GPT-5.6 replaced the legacy `minimal` effort with `none`. Preserve an
+  // existing user's intent by selecting the lowest supported reasoning level.
+  return isGpt56Model(model) && level === 'minimal' ? 'low' : level
+}
+
 export type ChatProvider = 'deepseek' | 'custom'
 
 export type AssistantMode = 'screenshot' | 'chat'

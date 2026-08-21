@@ -11,6 +11,7 @@ import {
   DEFAULT_VOLCENGINE_ASR_WS_URL,
   type ApiProtocol,
   type ChatProvider,
+  type ThinkingLevel,
   type TranscriptionProvider
 } from '../preload/contracts'
 
@@ -57,12 +58,16 @@ export const settings = {
   apiBaseURL: process.env.API_BASE_URL || '',
   apiKey: process.env.API_KEY || '',
   model: process.env.MODEL || '',
+  modelThinkingLevels: {} as Record<string, ThinkingLevel>,
+  apiBaseURLHistory: [] as string[],
   customPrompt: '',
   chatProvider: 'deepseek' as ChatProvider,
   chatApiProtocol: 'chat-completions' as ApiProtocol,
   chatApiBaseURL: DEEPSEEK_API_BASE_URL,
   chatApiKey: '',
   chatModel: DEEPSEEK_DEFAULT_MODEL,
+  chatModelThinkingLevels: {} as Record<string, ThinkingLevel>,
+  chatApiBaseURLHistory: [] as string[],
   chatCustomModels: [] as string[],
   chatSystemPrompt: DEFAULT_CHAT_SYSTEM_PROMPT,
   /** Kept in sync with the renderer so the overlay toolbar can match the main window */

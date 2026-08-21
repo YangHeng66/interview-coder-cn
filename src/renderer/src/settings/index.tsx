@@ -46,7 +46,9 @@ import {
   DEEPSEEK_MODELS
 } from '../../../preload/contracts'
 import { isMac } from '@/lib/utils/env'
+import { ApiBaseUrlInput } from './ApiBaseUrlInput'
 import { SelectModel } from './SelectModel'
+import { ThinkingEffortSlider } from './ThinkingEffortSlider'
 import { CustomShortcuts, ResetDefaultShortcuts } from './CustomShortcuts'
 import {
   Select,
@@ -65,11 +67,15 @@ export default function SettingsPage() {
     apiBaseURL,
     apiKey,
     model,
+    modelThinkingLevels,
+    apiBaseURLHistory,
     chatProvider,
     chatApiProtocol,
     chatApiBaseURL,
     chatApiKey,
     chatModel,
+    chatModelThinkingLevels,
+    chatApiBaseURLHistory,
     chatCustomModels,
     chatSystemPrompt,
     scenes,
@@ -88,6 +94,8 @@ export default function SettingsPage() {
     audioOutputDeviceId,
     hideDockIcon,
     updateSetting,
+    rememberApiBaseURL,
+    removeApiBaseURLHistory,
     setActiveScene,
     updateScenePrompt,
     addScene,
@@ -105,6 +113,10 @@ export default function SettingsPage() {
 
   const activeScene = scenes.find((s) => s.id === activeSceneId)
   const deletingScene = scenes.find((s) => s.id === sceneToDelete)
+  const screenshotModelId = model.trim()
+  const chatModelId = chatModel.trim()
+  const screenshotThinkingLevel = modelThinkingLevels[screenshotModelId] ?? 'auto'
+  const chatThinkingLevel = chatModelThinkingLevels[chatModelId] ?? 'auto'
 
   useEffect(() => {
     return () => {
@@ -193,13 +205,13 @@ export default function SettingsPage() {
                     : '如硅基流动为 https://api.siliconflow.cn/v1'}
                 </span>
               </label>
-              <input
+              <ApiBaseUrlInput
                 id="api-base-url"
-                type="text"
                 value={apiBaseURL}
-                onChange={(e) => updateSetting('apiBaseURL', e.target.value)}
-                onBlur={(e) => updateSetting('apiBaseURL', e.target.value.trim())}
-                className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                history={apiBaseURLHistory}
+                onChange={(value) => updateSetting('apiBaseURL', value)}
+                onCommit={(value) => rememberApiBaseURL('screenshot', value)}
+                onRemoveHistory={(value) => removeApiBaseURLHistory('screenshot', value)}
                 placeholder={
                   apiProtocol === 'responses'
                     ? 'https://api.example.com'
@@ -243,6 +255,21 @@ export default function SettingsPage() {
               </label>
               <SelectModel value={model} onChange={(val) => updateSetting('model', val)} />
             </div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">思考等级</label>
+              <ThinkingEffortSlider
+                model={screenshotModelId}
+                value={screenshotThinkingLevel}
+                disabled={!screenshotModelId}
+                onChange={(value) =>
+                  updateSetting('modelThinkingLevels', {
+                    ...modelThinkingLevels,
+                    [screenshotModelId]: value
+                  })
+                }
+              />
+            </div>
           </div>
         </div>
         {/* Text chat model settings */}
@@ -264,7 +291,6 @@ export default function SettingsPage() {
                   updateSetting('chatProvider', provider)
                   if (provider === 'deepseek') {
                     updateSetting('chatApiProtocol', 'chat-completions')
-                    updateSetting('chatApiBaseURL', DEEPSEEK_API_BASE_URL)
                     if (!chatModel.trim()) {
                       updateSetting('chatModel', DEEPSEEK_DEFAULT_MODEL)
                     }
@@ -304,14 +330,14 @@ export default function SettingsPage() {
               <label htmlFor="chat-api-base-url" className="text-sm font-medium">
                 API Base URL
               </label>
-              <input
+              <ApiBaseUrlInput
                 id="chat-api-base-url"
-                type="text"
                 disabled={chatProvider === 'deepseek'}
                 value={chatProvider === 'deepseek' ? DEEPSEEK_API_BASE_URL : chatApiBaseURL}
-                onChange={(e) => updateSetting('chatApiBaseURL', e.target.value)}
-                onBlur={(e) => updateSetting('chatApiBaseURL', e.target.value.trim())}
-                className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                history={chatApiBaseURLHistory}
+                onChange={(value) => updateSetting('chatApiBaseURL', value)}
+                onCommit={(value) => rememberApiBaseURL('chat', value)}
+                onRemoveHistory={(value) => removeApiBaseURLHistory('chat', value)}
                 placeholder={
                   chatApiProtocol === 'responses'
                     ? 'https://api.example.com'
@@ -354,6 +380,21 @@ export default function SettingsPage() {
                 presetModels={DEEPSEEK_MODELS.map((value) => ({ value, label: value }))}
                 customModelValues={chatCustomModels}
                 onCustomModelsChange={(models) => updateSetting('chatCustomModels', models)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">思考等级</label>
+              <ThinkingEffortSlider
+                model={chatModelId}
+                value={chatThinkingLevel}
+                disabled={!chatModelId}
+                onChange={(value) =>
+                  updateSetting('chatModelThinkingLevels', {
+                    ...chatModelThinkingLevels,
+                    [chatModelId]: value
+                  })
+                }
               />
             </div>
 

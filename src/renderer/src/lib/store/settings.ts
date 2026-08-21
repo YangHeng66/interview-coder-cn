@@ -12,8 +12,11 @@ import {
   DEFAULT_VOLCENGINE_ASR_MODEL,
   DEFAULT_VOLCENGINE_ASR_RESOURCE_ID,
   DEFAULT_VOLCENGINE_ASR_WS_URL,
+  normalizeThinkingLevelForModel,
+  THINKING_LEVELS,
   type ApiProtocol,
   type ChatProvider,
+  type ThinkingLevel,
   type TranscriptionProvider
 } from '../../../../preload/contracts'
 
@@ -25,6 +28,7 @@ export {
 export type {
   ApiProtocol,
   ChatProvider,
+  ThinkingLevel,
   TranscriptionConfig,
   TranscriptionProvider
 } from '../../../../preload/contracts'
@@ -77,6 +81,34 @@ function composeCustomPrompt(scenes: PromptScene[], activeSceneId: string): stri
 export const OPACITY_MIN = 0.1
 export const OPACITY_MAX = 1
 export const OPACITY_STEP = 0.05
+const API_BASE_URL_HISTORY_LIMIT = 10
+
+function rememberBaseURL(history: string[], value: string): string[] {
+  const normalizedValue = value.trim()
+  const normalizedHistory = history
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (!normalizedValue) return [...new Set(normalizedHistory)].slice(0, API_BASE_URL_HISTORY_LIMIT)
+  return [normalizedValue, ...normalizedHistory.filter((item) => item !== normalizedValue)].slice(
+    0,
+    API_BASE_URL_HISTORY_LIMIT
+  )
+}
+
+function normalizeThinkingLevels(value: unknown): Record<string, ThinkingLevel> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(
+        (entry): entry is [string, ThinkingLevel] =>
+          Boolean(entry[0].trim()) && THINKING_LEVELS.includes(entry[1] as ThinkingLevel)
+      )
+      .map(([model, level]) => [model, normalizeThinkingLevelForModel(model, level)])
+  )
+}
 
 export interface Settings {
   // theme: 'light' | 'dark'an
@@ -84,6 +116,8 @@ export interface Settings {
   apiBaseURL: string
   apiKey: string
   model: string
+  modelThinkingLevels: Record<string, ThinkingLevel>
+  apiBaseURLHistory: string[]
   customModels: string[]
   customPrompt: string
 
@@ -92,6 +126,8 @@ export interface Settings {
   chatApiBaseURL: string
   chatApiKey: string
   chatModel: string
+  chatModelThinkingLevels: Record<string, ThinkingLevel>
+  chatApiBaseURLHistory: string[]
   chatCustomModels: string[]
   chatSystemPrompt: string
 
@@ -124,6 +160,8 @@ export interface Settings {
 
 interface SettingsStore extends Settings {
   updateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void
+  rememberApiBaseURL: (target: 'screenshot' | 'chat', value: string) => void
+  removeApiBaseURLHistory: (target: 'screenshot' | 'chat', value: string) => void
   /** Step the window opacity within [OPACITY_MIN, OPACITY_MAX] */
   adjustOpacity: (delta: number) => void
   syncSettings: (settings: Partial<Settings>) => void
@@ -138,6 +176,8 @@ const defaultSettings: Settings = {
   apiBaseURL: '',
   apiKey: '',
   model: '',
+  modelThinkingLevels: {},
+  apiBaseURLHistory: [],
   customModels: [],
   customPrompt: PRESET_SCENE_PROMPTS[CODING_SCENE_ID],
   chatProvider: 'deepseek',
@@ -145,6 +185,8 @@ const defaultSettings: Settings = {
   chatApiBaseURL: DEEPSEEK_API_BASE_URL,
   chatApiKey: '',
   chatModel: DEEPSEEK_DEFAULT_MODEL,
+  chatModelThinkingLevels: {},
+  chatApiBaseURLHistory: [DEEPSEEK_API_BASE_URL],
   chatCustomModels: [],
   chatSystemPrompt: DEFAULT_CHAT_SYSTEM_PROMPT,
   scenes: createPresetScenes(),
@@ -179,6 +221,28 @@ export const useSettingsStore = create<SettingsStore>()(
       updateSetting: (key, value) => {
         set({ [key]: value })
       },
+      rememberApiBaseURL: (target, value) => {
+        set((state) =>
+          target === 'screenshot'
+            ? {
+                apiBaseURL: value.trim(),
+                apiBaseURLHistory: rememberBaseURL(state.apiBaseURLHistory, value)
+              }
+            : {
+                chatApiBaseURL: value.trim(),
+                chatApiBaseURLHistory: rememberBaseURL(state.chatApiBaseURLHistory, value)
+              }
+        )
+      },
+      removeApiBaseURLHistory: (target, value) => {
+        set((state) =>
+          target === 'screenshot'
+            ? { apiBaseURLHistory: state.apiBaseURLHistory.filter((item) => item !== value) }
+            : {
+                chatApiBaseURLHistory: state.chatApiBaseURLHistory.filter((item) => item !== value)
+              }
+        )
+      },
       adjustOpacity: (delta) => {
         const raw = get().opacity + delta
         // Round to 2 decimals to avoid float drift across repeated presses
@@ -186,7 +250,20 @@ export const useSettingsStore = create<SettingsStore>()(
         set({ opacity })
       },
       syncSettings: (settings) => {
-        set(settings)
+        set((state) => ({
+          ...settings,
+          ...(settings.apiBaseURL
+            ? { apiBaseURLHistory: rememberBaseURL(state.apiBaseURLHistory, settings.apiBaseURL) }
+            : {}),
+          ...(settings.chatApiBaseURL
+            ? {
+                chatApiBaseURLHistory: rememberBaseURL(
+                  state.chatApiBaseURLHistory,
+                  settings.chatApiBaseURL
+                )
+              }
+            : {})
+        }))
       },
       setActiveScene: (id) => {
         set((state) => ({
@@ -231,11 +308,17 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'interview-coder-settings',
-      version: 11,
+      version: 12,
       migrate: (persisted, version) => {
         const state = persisted as Partial<Settings>
         // Drop the legacy codeLanguage field (language now lives in the prompt text)
         delete (state as Record<string, unknown>).codeLanguage
+        if (version < 12) {
+          state.modelThinkingLevels = {}
+          state.chatModelThinkingLevels = {}
+          state.apiBaseURLHistory = rememberBaseURL([], state.apiBaseURL ?? '')
+          state.chatApiBaseURLHistory = rememberBaseURL([], state.chatApiBaseURL ?? '')
+        }
         if (version < 11) {
           state.transcriptionProvider = 'dashscope'
           state.dashscopeAsrModel = DEFAULT_DASHSCOPE_ASR_MODEL
@@ -294,6 +377,13 @@ export const useSettingsStore = create<SettingsStore>()(
         if (!state.scenes.some((s) => s.id === state.activeSceneId)) {
           state.activeSceneId = CODING_SCENE_ID
         }
+        state.modelThinkingLevels = normalizeThinkingLevels(state.modelThinkingLevels)
+        state.chatModelThinkingLevels = normalizeThinkingLevels(state.chatModelThinkingLevels)
+        state.apiBaseURLHistory = rememberBaseURL(state.apiBaseURLHistory, state.apiBaseURL)
+        state.chatApiBaseURLHistory = rememberBaseURL(
+          state.chatApiBaseURLHistory,
+          state.chatApiBaseURL
+        )
         state.customPrompt = composeCustomPrompt(state.scenes, state.activeSceneId)
         return state
       }

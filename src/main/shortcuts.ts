@@ -114,6 +114,24 @@ let chatConversationMessages: ModelMessage[] = []
 let recentScreenshots: string[] = [] // 最近截图，水平预览 (限5张)
 let hasAppendSeparator = false
 
+function notifyVisionStreamFinished(streamContext: StreamContext): void {
+  const mainWindow = global.mainWindow
+  if (
+    currentStreamContext !== streamContext ||
+    streamContext.controller.signal.aborted ||
+    !mainWindow ||
+    mainWindow.isDestroyed()
+  ) {
+    return
+  }
+
+  // Some OpenAI-compatible relays emit the SDK finish event before their SSE
+  // connection closes. Clear the UI immediately and keep the iterator cleanup
+  // below as the normal conversation-history path.
+  mainWindow.webContents.send('solution-complete')
+  mainWindow.webContents.send('ai-loading-end')
+}
+
 const FRONT_REASSERT_DURATION = 8000
 const FRONT_REASSERT_INTERVAL = 100
 const FRONT_RELATIVE_LEVEL = 100
@@ -579,7 +597,8 @@ const callbacks: Record<string, () => void> = {
       try {
         const solutionStream = getSolutionStream(
           visionConversationMessages,
-          streamContext.controller.signal
+          streamContext.controller.signal,
+          () => notifyVisionStreamFinished(streamContext)
         )
         streamStarted = true
         try {
@@ -707,7 +726,8 @@ const callbacks: Record<string, () => void> = {
       try {
         const solutionStream = getGeneralStream(
           visionConversationMessages,
-          streamContext.controller.signal
+          streamContext.controller.signal,
+          () => notifyVisionStreamFinished(streamContext)
         )
         streamStarted = true
         try {
@@ -1000,7 +1020,8 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
     const followUpStream = getFollowUpStream(
       visionConversationMessages,
       question,
-      streamContext.controller.signal
+      streamContext.controller.signal,
+      () => notifyVisionStreamFinished(streamContext)
     )
     streamStarted = true
 
