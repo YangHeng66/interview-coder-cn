@@ -930,8 +930,9 @@ export default function SettingsPage() {
 
           <div className="space-y-4">
             <p className="text-sm">
-              此应用为本地应用，采集的图片直接上传到您配置的 OpenAI
-              等大模型公司，不存在隐私泄露风险。
+              截图、语音转录、文字对话和临时附件会发送给您配置的 AI
+              服务。用户知识库原件与索引保存在本机；启用知识库后，仅将本次命中的参考片段随问题发送给 AI
+              服务，内置前端资料包不会写入用户文档目录。
             </p>
             {isMac && (
               <div className="flex items-center justify-between">

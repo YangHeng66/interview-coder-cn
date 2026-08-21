@@ -13,9 +13,11 @@ import {
   X
 } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
+import { KnowledgeSources } from '@/components/KnowledgeSources'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useChatStore, type ChatMessage } from '@/lib/store/chat'
+import { useKnowledgeStore } from '@/lib/store/knowledge'
 import {
   createTranscriptionConfig,
   getTranscriptionConfigError,
@@ -131,6 +133,8 @@ function ChatMessageItem({
   message: ChatMessage
   previousUserMessage?: ChatMessage
 }) {
+  const knowledgeContext = useKnowledgeStore((state) => state.chatContexts[message.requestId])
+
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
@@ -177,6 +181,8 @@ function ChatMessageItem({
             <span className="size-1.5 animate-pulse rounded-full bg-gray-200/70 [animation-delay:300ms]" />
           </div>
         ) : null}
+
+        <KnowledgeSources context={knowledgeContext} className="mt-1" />
 
         {message.status === 'stopped' && (
           <p className="mt-2 text-xs text-amber-100/70">回答已停止，未加入后续上下文</p>

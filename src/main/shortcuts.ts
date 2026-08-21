@@ -20,6 +20,8 @@ import {
 } from './ai'
 import { state } from './state'
 import { settings } from './settings'
+import { knowledgeService } from './knowledge/service'
+import type { KnowledgeRetrieval } from './knowledge/search'
 import {
   getTranscriptionText,
   clearTranscriptionText,
@@ -34,7 +36,8 @@ import {
   type AssistantMode,
   type ChatEvent,
   type ChatMessageSource,
-  type ChatRequestResult
+  type ChatRequestResult,
+  type KnowledgeContextUsed
 } from '../preload/contracts'
 
 /**
@@ -98,7 +101,7 @@ const MOVE_STEP = 200
 const OPACITY_STEP = 0.05
 const shortcuts: Record<string, Shortcut> = {}
 
-type AbortReason = 'user' | 'new-request' | 'clear-chat'
+type AbortReason = 'user' | 'new-request' | 'clear-chat' | 'profile-switch'
 
 interface StreamContext {
   controller: AbortController
@@ -303,6 +306,37 @@ function sendChatEvent(event: ChatEvent) {
   }
 }
 
+function sendKnowledgeContextUsed(
+  mode: KnowledgeContextUsed['mode'],
+  retrieval: KnowledgeRetrieval,
+  requestId?: string
+): void {
+  const mainWindow = global.mainWindow
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.webContents.send('knowledge-context-used', {
+    mode,
+    requestId,
+    profileId: retrieval.profileId,
+    profileName: retrieval.profileName,
+    sources: retrieval.sources
+  } satisfies KnowledgeContextUsed)
+}
+
+async function retrieveKnowledgeContext(
+  mode: KnowledgeContextUsed['mode'],
+  query: string,
+  requestId?: string
+): Promise<KnowledgeRetrieval | null> {
+  try {
+    const retrieval = await knowledgeService.retrieve(query)
+    if (retrieval) sendKnowledgeContextUsed(mode, retrieval, requestId)
+    return retrieval
+  } catch (error) {
+    console.warn('Knowledge retrieval failed; continuing without knowledge context:', error)
+    return null
+  }
+}
+
 function rejectChatRequest(error: string): ChatRequestResult {
   sendChatEvent({
     type: 'request-error',
@@ -384,23 +418,31 @@ async function runChatRequest(
   streamContext: StreamContext,
   requestId: string,
   assistantMessageId: string,
-  userMessage: ModelMessage
+  userMessage: ModelMessage,
+  knowledgeQuery: string
 ) {
   const requestMessages = [...chatConversationMessages, userMessage]
   let assistantResponse = ''
   let streamError: unknown = null
 
   try {
-    const chatStream = getChatStream(requestMessages, streamContext.controller.signal)
-    for await (const chunk of chatStream) {
-      if (streamContext.controller.signal.aborted) break
-      assistantResponse += chunk
-      sendChatEvent({
-        type: 'assistant-delta',
-        requestId,
-        messageId: assistantMessageId,
-        delta: chunk
-      })
+    const knowledge = await retrieveKnowledgeContext('chat', knowledgeQuery, requestId)
+    if (!streamContext.controller.signal.aborted) {
+      const chatStream = getChatStream(
+        requestMessages,
+        streamContext.controller.signal,
+        knowledge?.context
+      )
+      for await (const chunk of chatStream) {
+        if (streamContext.controller.signal.aborted) break
+        assistantResponse += chunk
+        sendChatEvent({
+          type: 'assistant-delta',
+          requestId,
+          messageId: assistantMessageId,
+          delta: chunk
+        })
+      }
     }
   } catch (error) {
     if (!streamContext.controller.signal.aborted) {
@@ -409,7 +451,7 @@ async function runChatRequest(
   }
 
   if (streamContext.controller.signal.aborted) {
-    if (streamContext.reason !== 'clear-chat') {
+    if (streamContext.reason !== 'clear-chat' && streamContext.reason !== 'profile-switch') {
       sendChatEvent({
         type: 'assistant-stopped',
         requestId,
@@ -478,7 +520,10 @@ function acceptChatRequest(
     documents: documents.length ? documents : undefined
   })
   sendChatEvent({ type: 'assistant-start', requestId, messageId: assistantMessageId })
-  void runChatRequest(streamContext, requestId, assistantMessageId, userMessage)
+  const knowledgeQuery = [text, ...documents.map((document) => document.name)]
+    .filter(Boolean)
+    .join('\n')
+  void runChatRequest(streamContext, requestId, assistantMessageId, userMessage, knowledgeQuery)
   return { accepted: true, requestId }
 }
 
@@ -512,6 +557,24 @@ function clearChatConversation(): void {
     currentStreamContext = null
   }
   chatConversationMessages = []
+  sendChatEvent({ type: 'conversation-cleared' })
+}
+
+function clearKnowledgeScopedConversations(): void {
+  if (currentStreamContext) {
+    abortCurrentStream('profile-switch')
+    currentStreamContext = null
+  }
+  visionConversationMessages = []
+  chatConversationMessages = []
+  recentScreenshots = []
+  hasAppendSeparator = false
+
+  const mainWindow = global.mainWindow
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('solution-clear')
+    mainWindow.webContents.send('ai-loading-end')
+  }
   sendChatEvent({ type: 'conversation-cleared' })
 }
 
@@ -595,10 +658,12 @@ const callbacks: Record<string, () => void> = {
       let streamStarted = false
       let assistantResponse = ''
       try {
+        const knowledge = await retrieveKnowledgeContext('vision', transcriptionText)
         const solutionStream = getSolutionStream(
           visionConversationMessages,
           streamContext.controller.signal,
-          () => notifyVisionStreamFinished(streamContext)
+          () => notifyVisionStreamFinished(streamContext),
+          knowledge?.context
         )
         streamStarted = true
         try {
@@ -724,10 +789,12 @@ const callbacks: Record<string, () => void> = {
       let streamStarted = false
       let assistantResponse = ''
       try {
+        const knowledge = await retrieveKnowledgeContext('vision', transcriptionText)
         const solutionStream = getGeneralStream(
           visionConversationMessages,
           streamContext.controller.signal,
-          () => notifyVisionStreamFinished(streamContext)
+          () => notifyVisionStreamFinished(streamContext),
+          knowledge?.context
         )
         streamStarted = true
         try {
@@ -990,6 +1057,37 @@ ipcMain.handle('clearChatConversation', () => {
   return true
 })
 
+ipcMain.handle('activateKnowledgeProfile', async (_event, profileId: string | null) => {
+  const currentSnapshot = await knowledgeService.getSnapshot()
+  if (currentSnapshot.activeProfileId === profileId) {
+    return { ok: true, data: currentSnapshot }
+  }
+
+  const result = await knowledgeService.setActiveProfile(profileId)
+  if (!result.ok) return result
+  clearKnowledgeScopedConversations()
+  return result
+})
+
+ipcMain.handle('setBuiltinKnowledgeEnabled', async (_event, enabled: boolean) => {
+  const currentSnapshot = await knowledgeService.getSnapshot()
+  if (currentSnapshot.builtinFrontendKnowledgeEnabled === enabled) {
+    return { ok: true, data: currentSnapshot }
+  }
+
+  const result = await knowledgeService.setBuiltinKnowledgeEnabled(enabled)
+  if (result.ok) clearKnowledgeScopedConversations()
+  return result
+})
+
+ipcMain.handle('deleteKnowledgeProfile', async (_event, profileId: string) => {
+  const snapshot = await knowledgeService.getSnapshot()
+  const wasActive = snapshot.activeProfileId === profileId
+  const result = await knowledgeService.deleteProfile(profileId)
+  if (result.ok && wasActive) clearKnowledgeScopedConversations()
+  return result
+})
+
 ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
   const mainWindow = global.mainWindow
   if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage || !settings.apiKey) {
@@ -1017,11 +1115,13 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
   let assistantResponse = ''
 
   try {
+    const knowledge = await retrieveKnowledgeContext('vision', question)
     const followUpStream = getFollowUpStream(
       visionConversationMessages,
       question,
       streamContext.controller.signal,
-      () => notifyVisionStreamFinished(streamContext)
+      () => notifyVisionStreamFinished(streamContext),
+      knowledge?.context
     )
     streamStarted = true
 

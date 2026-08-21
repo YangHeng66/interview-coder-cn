@@ -4,10 +4,12 @@ import { Toaster } from 'sonner'
 import CoderPage from '@/coder'
 import SettingsPage from '@/settings'
 import HelpPage from '@/help'
+import KnowledgePage from '@/knowledge'
 import { OverlayToolbar } from '@/coder/OverlayToolbar'
 import { useSettingsStore } from '@/lib/store/settings'
 import { useShortcutsStore } from '@/lib/store/shortcuts'
 import { getCloneableFields } from '@/lib/utils'
+import { useKnowledgeStore } from '@/lib/store/knowledge'
 
 export default function App() {
   const [initialized, setInitialized] = useState(false)
@@ -52,10 +54,12 @@ export default function App() {
     <>
       <HashRouter>
         <ToolbarVisibilityController />
+        <KnowledgeSyncController />
         <Routes>
           <Route index element={<CoderPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="help" element={<HelpPage />} />
+          <Route path="knowledge" element={<KnowledgePage />} />
           <Route path="toolbar" element={<OverlayToolbar />} />
         </Routes>
       </HashRouter>
@@ -63,6 +67,32 @@ export default function App() {
       <Toaster />
     </>
   )
+}
+
+function KnowledgeSyncController() {
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.pathname === '/toolbar') return
+    const store = useKnowledgeStore.getState()
+    void store.initialize()
+    window.api.onKnowledgeSnapshotChanged((snapshot) => {
+      useKnowledgeStore.getState().setSnapshot(snapshot)
+    })
+    window.api.onKnowledgeImportProgress((progress) => {
+      useKnowledgeStore.getState().handleImportProgress(progress)
+    })
+    window.api.onKnowledgeContextUsed((context) => {
+      useKnowledgeStore.getState().handleContextUsed(context)
+    })
+    return () => {
+      window.api.removeKnowledgeSnapshotChangedListener()
+      window.api.removeKnowledgeImportProgressListener()
+      window.api.removeKnowledgeContextUsedListener()
+    }
+  }, [location.pathname])
+
+  return null
 }
 
 function ToolbarVisibilityController() {

@@ -8,6 +8,7 @@ import { useAppStore } from '@/lib/store/app'
 import { useTranscriptionStore } from '@/lib/store/transcription'
 import { useSolutionStore } from '@/lib/store/solution'
 import { useChatStore } from '@/lib/store/chat'
+import { useKnowledgeStore } from '@/lib/store/knowledge'
 import { startAudioCapture, stopAudioCapture } from '@/lib/audio-capture'
 
 import { AppHeader } from './AppHeader'
@@ -109,7 +110,12 @@ export default function CoderPage() {
   }, [handleToggleTranscription])
 
   useEffect(() => {
-    window.api.onChatEvent(handleChatEvent)
+    window.api.onChatEvent((event) => {
+      if (event.type === 'conversation-cleared') {
+        useKnowledgeStore.getState().clearChatContexts()
+      }
+      handleChatEvent(event)
+    })
     return () => {
       window.api.removeChatEventListener()
     }

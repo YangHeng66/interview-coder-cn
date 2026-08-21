@@ -18,6 +18,10 @@ export function getCloneableFields<T extends object>(obj: T): Partial<T> {
   return cloneable
 }
 
+export function hasBuiltinKnowledgeApi(): boolean {
+  return typeof window.api?.setBuiltinKnowledgeEnabled === 'function'
+}
+
 function isCloneableValue(value: unknown): boolean {
   if (value === null || value === undefined) return true
   if (typeof value === 'function' || typeof value === 'symbol') return false

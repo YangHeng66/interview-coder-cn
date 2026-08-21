@@ -29,6 +29,7 @@ process.on('uncaughtException', (error) => {
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import './shortcuts'
 import './transcription'
+import './knowledge/ipc'
 import { createWindow } from './main-window'
 import { initAutoUpdater } from './auto-updater'
 import { applyDockVisibility } from './settings'

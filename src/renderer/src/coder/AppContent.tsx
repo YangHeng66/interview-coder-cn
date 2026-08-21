@@ -3,6 +3,8 @@ import { useShortcutsStore } from '@/lib/store/shortcuts'
 import { useSolutionStore } from '@/lib/store/solution'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ShortcutRenderer from '@/components/ShortcutRenderer'
+import { KnowledgeSources } from '@/components/KnowledgeSources'
+import { useKnowledgeStore } from '@/lib/store/knowledge'
 
 const SCROLL_OFFSET = 120
 
@@ -19,6 +21,8 @@ export function AppContent() {
   } = useSolutionStore()
 
   const [recentScreenshots, setRecentScreenshots] = useState<string[]>([])
+  const visionContext = useKnowledgeStore((state) => state.visionContext)
+  const clearVisionContext = useKnowledgeStore((state) => state.clearVisionContext)
 
   useEffect(() => {
     // Listen for screenshot events (latest)
@@ -37,6 +41,7 @@ export function AppContent() {
       setRecentScreenshots([])
       setScreenshotData(null)
       setErrorMessage(null)
+      clearVisionContext()
     })
 
     // Listen for solution chunks
@@ -62,7 +67,14 @@ export function AppContent() {
       window.api.removeAiLoadingEndListener()
       window.api.removeSolutionClearListener()
     }
-  }, [setScreenshotData, clearSolution, setIsLoading, addSolutionChunk, setErrorMessage])
+  }, [
+    setScreenshotData,
+    clearSolution,
+    setIsLoading,
+    addSolutionChunk,
+    setErrorMessage,
+    clearVisionContext
+  ])
 
   useEffect(() => {
     window.api.onSolutionComplete(() => {
@@ -175,6 +187,7 @@ export function AppContent() {
       )}
 
       {/* Solution Display */}
+      <KnowledgeSources context={visionContext} className="mb-2" />
       <MarkdownRenderer>{solutionChunks.join('')}</MarkdownRenderer>
     </div>
   )

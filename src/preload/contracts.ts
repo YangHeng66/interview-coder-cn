@@ -110,6 +110,146 @@ export type ChatDocument = {
   text: string
 }
 
+export type KnowledgeDocumentStatus = 'processing' | 'ready' | 'error'
+
+export type KnowledgeLinkPriority = 'key' | 'normal'
+
+export type KnowledgeDocument = {
+  id: string
+  name: string
+  extension: string
+  mediaType: string
+  size: number
+  sha256: string
+  status: KnowledgeDocumentStatus
+  error?: string
+  characterCount: number
+  chunkCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type KnowledgeDocumentLink = {
+  documentId: string
+  priority: KnowledgeLinkPriority
+  linkedAt: string
+}
+
+export type KnowledgeProfile = {
+  id: string
+  name: string
+  company: string
+  role: string
+  jobDescription: string
+  documentLinks: KnowledgeDocumentLink[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type KnowledgeSnapshot = {
+  schemaVersion: 1
+  activeProfileId: string | null
+  builtinFrontendKnowledgeEnabled: boolean
+  profiles: KnowledgeProfile[]
+  documents: KnowledgeDocument[]
+}
+
+/**
+ * The bundled frontend pack is intentionally separate from user documents:
+ * it is read-only, ships with the app, and never appears in the local file
+ * manifest. Keep these identifiers stable so retrieval/source history remains
+ * understandable after an app upgrade.
+ */
+export const BUILTIN_FRONTEND_KNOWLEDGE_PROFILE_ID = '__builtin_frontend__'
+export const BUILTIN_FRONTEND_KNOWLEDGE_PROFILE_NAME = '前端开发通用知识'
+export const BUILTIN_FRONTEND_KNOWLEDGE_DOCUMENT_PREFIX = 'builtin:frontend:'
+
+export const BUILTIN_FRONTEND_KNOWLEDGE_TOPICS = [
+  {
+    id: 'html-css-accessibility',
+    name: 'HTML、CSS 与无障碍',
+    summary: '语义化结构、布局、响应式设计和 WCAG 实践'
+  },
+  {
+    id: 'javascript-typescript',
+    name: 'JavaScript 与 TypeScript',
+    summary: '语言特性、类型建模、异步代码和常见陷阱'
+  },
+  {
+    id: 'browser-web-platform',
+    name: '浏览器与 Web 平台',
+    summary: '事件循环、渲染管线、网络、缓存和存储'
+  },
+  {
+    id: 'react-vue-engineering',
+    name: 'React、Vue 与工程化',
+    summary: '组件设计、状态管理、路由、构建和测试'
+  },
+  {
+    id: 'performance-security',
+    name: '性能、安全与质量',
+    summary: '性能指标、Web 安全、可观测性和发布质量'
+  }
+] as const
+
+export type KnowledgeProfileInput = Pick<
+  KnowledgeProfile,
+  'name' | 'company' | 'role' | 'jobDescription'
+>
+
+export type KnowledgeProfilePatch = Partial<KnowledgeProfileInput>
+
+export type KnowledgeLinkPatch = {
+  linked?: boolean
+  priority?: KnowledgeLinkPriority
+}
+
+export type KnowledgeImportStage = 'copying' | 'extracting' | 'indexing' | 'ready' | 'error'
+
+export type KnowledgeImportProgress = {
+  documentId: string
+  name: string
+  stage: KnowledgeImportStage
+  completed: number
+  total: number
+  error?: string
+}
+
+export type KnowledgeImportFailure = {
+  name: string
+  error: string
+}
+
+export type KnowledgeImportResult = {
+  snapshot: KnowledgeSnapshot
+  importedIds: string[]
+  duplicateIds: string[]
+  failures: KnowledgeImportFailure[]
+}
+
+export type KnowledgeSource = {
+  documentId: string
+  name: string
+  priority: KnowledgeLinkPriority
+  chunkCount: number
+  excerpts: string[]
+}
+
+export type KnowledgeContextUsed = {
+  mode: 'vision' | 'chat'
+  requestId?: string
+  profileId: string
+  profileName: string
+  sources: KnowledgeSource[]
+}
+
+export type KnowledgeResult<T> = { ok: true; data: T } | { ok: false; error: string }
+
+export const KNOWLEDGE_DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md', '.markdown'] as const
+export const KNOWLEDGE_DOCUMENT_ACCEPT = KNOWLEDGE_DOCUMENT_EXTENSIONS.join(',')
+export const KNOWLEDGE_MAX_FILE_BYTES = 10 * 1024 * 1024
+export const KNOWLEDGE_MAX_IMPORT_FILES = 20
+
 export const CHAT_DOCUMENT_EXTENSIONS = [
   '.txt',
   '.md',

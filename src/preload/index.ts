@@ -2,7 +2,21 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { AppSettings } from '../main/settings'
 import type { AppState } from '../main/state'
-import type { ChatDocument, ChatEvent, ChatRequestResult, TranscriptionConfig } from './contracts'
+import type {
+  ChatDocument,
+  ChatEvent,
+  ChatRequestResult,
+  KnowledgeContextUsed,
+  KnowledgeImportProgress,
+  KnowledgeImportResult,
+  KnowledgeLinkPatch,
+  KnowledgeProfile,
+  KnowledgeProfileInput,
+  KnowledgeProfilePatch,
+  KnowledgeResult,
+  KnowledgeSnapshot,
+  TranscriptionConfig
+} from './contracts'
 
 // Custom APIs for renderer
 const api = {
@@ -114,6 +128,64 @@ const api = {
   },
   removeChatEventListener: () => {
     ipcRenderer.removeAllListeners('chat-event')
+  },
+
+  // Local knowledge base
+  getKnowledgeSnapshot: () =>
+    ipcRenderer.invoke('getKnowledgeSnapshot') as Promise<KnowledgeSnapshot>,
+  createKnowledgeProfile: (input: KnowledgeProfileInput) =>
+    ipcRenderer.invoke('createKnowledgeProfile', input) as Promise<
+      KnowledgeResult<KnowledgeProfile>
+    >,
+  updateKnowledgeProfile: (profileId: string, patch: KnowledgeProfilePatch) =>
+    ipcRenderer.invoke('updateKnowledgeProfile', profileId, patch) as Promise<
+      KnowledgeResult<KnowledgeProfile>
+    >,
+  deleteKnowledgeProfile: (profileId: string) =>
+    ipcRenderer.invoke('deleteKnowledgeProfile', profileId) as Promise<
+      KnowledgeResult<KnowledgeSnapshot>
+    >,
+  activateKnowledgeProfile: (profileId: string | null) =>
+    ipcRenderer.invoke('activateKnowledgeProfile', profileId) as Promise<
+      KnowledgeResult<KnowledgeSnapshot>
+    >,
+  setBuiltinKnowledgeEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('setBuiltinKnowledgeEnabled', enabled) as Promise<
+      KnowledgeResult<KnowledgeSnapshot>
+    >,
+  importKnowledgeDocuments: (profileId?: string) =>
+    ipcRenderer.invoke('importKnowledgeDocuments', profileId) as Promise<
+      KnowledgeResult<KnowledgeImportResult | null>
+    >,
+  updateKnowledgeDocumentLink: (profileId: string, documentId: string, patch: KnowledgeLinkPatch) =>
+    ipcRenderer.invoke('updateKnowledgeDocumentLink', profileId, documentId, patch) as Promise<
+      KnowledgeResult<KnowledgeSnapshot>
+    >,
+  deleteKnowledgeDocument: (documentId: string) =>
+    ipcRenderer.invoke('deleteKnowledgeDocument', documentId) as Promise<
+      KnowledgeResult<KnowledgeSnapshot>
+    >,
+  retryKnowledgeDocument: (documentId: string) =>
+    ipcRenderer.invoke('retryKnowledgeDocument', documentId) as Promise<
+      KnowledgeResult<KnowledgeSnapshot>
+    >,
+  onKnowledgeSnapshotChanged: (callback: (snapshot: KnowledgeSnapshot) => void) => {
+    ipcRenderer.on('knowledge-snapshot-changed', (_event, snapshot) => callback(snapshot))
+  },
+  removeKnowledgeSnapshotChangedListener: () => {
+    ipcRenderer.removeAllListeners('knowledge-snapshot-changed')
+  },
+  onKnowledgeImportProgress: (callback: (progress: KnowledgeImportProgress) => void) => {
+    ipcRenderer.on('knowledge-import-progress', (_event, progress) => callback(progress))
+  },
+  removeKnowledgeImportProgressListener: () => {
+    ipcRenderer.removeAllListeners('knowledge-import-progress')
+  },
+  onKnowledgeContextUsed: (callback: (context: KnowledgeContextUsed) => void) => {
+    ipcRenderer.on('knowledge-context-used', (_event, context) => callback(context))
+  },
+  removeKnowledgeContextUsedListener: () => {
+    ipcRenderer.removeAllListeners('knowledge-context-used')
   },
 
   // Listen for solution completion

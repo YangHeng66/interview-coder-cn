@@ -189,13 +189,14 @@ export function isChatConfigured(): boolean {
 export function getSolutionStream(
   messages: ModelMessage[],
   abortSignal?: AbortSignal,
-  onFinish?: () => void
+  onFinish?: () => void,
+  knowledgeContext?: string
 ) {
   const connection = getVisionConnection()
   const timing = createStreamTimingLogger(connection, 'vision')
   const { textStream } = streamText({
     model: createLanguageModel(connection),
-    system: getSystemPrompt(),
+    system: getSystemPrompt(knowledgeContext),
     messages,
     providerOptions: getProviderOptions(connection),
     abortSignal,
@@ -215,7 +216,8 @@ export function getFollowUpStream(
   messages: ModelMessage[],
   userQuestion: string,
   abortSignal?: AbortSignal,
-  onFinish?: () => void
+  onFinish?: () => void,
+  knowledgeContext?: string
 ) {
   // Add the user's follow-up question to the conversation
   const updatedMessages: ModelMessage[] = [
@@ -235,7 +237,7 @@ export function getFollowUpStream(
   const timing = createStreamTimingLogger(connection, 'vision')
   const { textStream } = streamText({
     model: createLanguageModel(connection),
-    system: getSystemPrompt(),
+    system: getSystemPrompt(knowledgeContext),
     messages: updatedMessages,
     providerOptions: getProviderOptions(connection),
     abortSignal,
@@ -254,14 +256,17 @@ export function getFollowUpStream(
 export function getGeneralStream(
   messages: ModelMessage[],
   abortSignal?: AbortSignal,
-  onFinish?: () => void
+  onFinish?: () => void,
+  knowledgeContext?: string
 ) {
   const connection = getVisionConnection()
   const timing = createStreamTimingLogger(connection, 'vision')
   const { textStream } = streamText({
     model: createLanguageModel(connection),
     system: getSystemPrompt(
-      '注意：如果有多张截图，请结合所有截图内容进行完整分析，不要遗漏任何部分。'
+      ['注意：如果有多张截图，请结合所有截图内容进行完整分析，不要遗漏任何部分。', knowledgeContext]
+        .filter(Boolean)
+        .join('\n\n')
     ),
     messages,
     providerOptions: getProviderOptions(connection),
@@ -278,12 +283,18 @@ export function getGeneralStream(
   return textStream
 }
 
-export function getChatStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
+export function getChatStream(
+  messages: ModelMessage[],
+  abortSignal?: AbortSignal,
+  knowledgeContext?: string
+) {
   const connection = getChatConnection()
   const timing = createStreamTimingLogger(connection, 'chat')
   const { textStream } = streamText({
     model: createLanguageModel(connection),
-    system: settings.chatSystemPrompt.trim() || DEFAULT_CHAT_SYSTEM_PROMPT,
+    system: [settings.chatSystemPrompt.trim() || DEFAULT_CHAT_SYSTEM_PROMPT, knowledgeContext]
+      .filter(Boolean)
+      .join('\n\n'),
     messages,
     providerOptions: getProviderOptions(connection),
     abortSignal,
