@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react'
+import { toast } from 'sonner'
 import {
   createTranscriptionConfig,
   getTranscriptionConfigError,
@@ -21,8 +22,14 @@ import { ChatWorkspace } from './ChatWorkspace'
 export default function CoderPage() {
   const { opacity, apiKey, chatApiKey, chatModel } = useSettingsStore()
   const { assistantMode, syncAppState, setAssistantMode } = useAppStore()
-  const { isTranscribing, setIsTranscribing, setTranscriptionText, clearText } =
-    useTranscriptionStore()
+  const {
+    isTranscribing,
+    isPaused,
+    setIsTranscribing,
+    setIsPaused,
+    setTranscriptionText,
+    clearText
+  } = useTranscriptionStore()
   const { setErrorMessage } = useSolutionStore()
   const { handleEvent: handleChatEvent } = useChatStore()
 
@@ -39,8 +46,10 @@ export default function CoderPage() {
 
   const handleToggleTranscription = useCallback(async () => {
     if (isTranscribing) {
-      stopAudioCapture()
+      setIsPaused(false)
+      await window.api.updateAppState({ transcriptionPaused: false })
       await window.api.stopTranscription()
+      stopAudioCapture()
       setIsTranscribing(false)
       return
     }
@@ -53,17 +62,40 @@ export default function CoderPage() {
     }
 
     try {
-      await startAudioCapture()
+      const captureResult = await startAudioCapture()
+      await window.api.updateAppState({ transcriptionPaused: false })
       await window.api.startTranscription(transcriptionConfig)
       setIsTranscribing(true)
+      setIsPaused(false)
       showModeError(null)
+      captureResult.warnings.forEach((warning) => toast.warning(warning))
     } catch (error) {
       console.error('Failed to start transcription:', error)
       stopAudioCapture()
+      setIsPaused(false)
+      void window.api.updateAppState({ transcriptionPaused: false })
       const detail = error instanceof Error ? error.message : String(error)
       showModeError(`启动语音转录失败：${detail}`)
     }
-  }, [isTranscribing, setIsTranscribing, showModeError])
+  }, [isTranscribing, setIsPaused, setIsTranscribing, showModeError])
+
+  const handlePauseTranscription = useCallback(async () => {
+    if (!isTranscribing) return
+
+    setIsPaused(true)
+    try {
+      await window.api.updateAppState({ transcriptionPaused: true })
+      await window.api.stopTranscription()
+    } catch (error) {
+      setIsPaused(false)
+      void window.api.updateAppState({ transcriptionPaused: false })
+      const detail = error instanceof Error ? error.message : String(error)
+      showModeError(`暂停语音识别失败：${detail}`)
+    } finally {
+      stopAudioCapture()
+      setIsTranscribing(false)
+    }
+  }, [isTranscribing, setIsPaused, setIsTranscribing, showModeError])
 
   useEffect(() => {
     document.body.style.opacity = opacity.toString()
@@ -85,9 +117,13 @@ export default function CoderPage() {
     const initialMode =
       !apiKey.trim() && chatApiKey.trim() && chatModel.trim() ? 'chat' : assistantMode
     setAssistantMode(initialMode)
-    window.api.updateAppState({ inCoderPage: true, assistantMode: initialMode })
+    window.api.updateAppState({
+      inCoderPage: true,
+      assistantMode: initialMode,
+      transcriptionPaused: false
+    })
     return () => {
-      window.api.updateAppState({ inCoderPage: false })
+      window.api.updateAppState({ inCoderPage: false, transcriptionPaused: false })
     }
     // Only derive the initial mode when entering this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,6 +164,8 @@ export default function CoderPage() {
     window.api.onTranscriptionError((message) => {
       showModeError(message)
       setIsTranscribing(false)
+      setIsPaused(false)
+      void window.api.updateAppState({ transcriptionPaused: false })
       stopAudioCapture()
     })
     window.api.onTranscriptionStopped(() => {
@@ -144,14 +182,15 @@ export default function CoderPage() {
       window.api.removeTranscriptionStoppedListener()
       window.api.removeTranscriptionClearedListener()
     }
-  }, [setTranscriptionText, showModeError, setIsTranscribing, clearText])
+  }, [setTranscriptionText, showModeError, setIsPaused, setIsTranscribing, clearText])
 
   useEffect(() => {
     return () => {
-      if (useTranscriptionStore.getState().isTranscribing) {
-        stopAudioCapture()
-        window.api.stopTranscription()
+      const transcriptionState = useTranscriptionStore.getState()
+      if (transcriptionState.isTranscribing) {
+        void window.api.stopTranscription().finally(() => stopAudioCapture())
       }
+      transcriptionState.setIsPaused(false)
     }
   }, [])
 
@@ -160,11 +199,19 @@ export default function CoderPage() {
       <AppHeader />
       <div className={assistantMode === 'screenshot' ? 'contents' : 'hidden'}>
         <AppContent />
-        <TranscriptionBar />
+        <TranscriptionBar
+          isPaused={isPaused}
+          onPause={handlePauseTranscription}
+          onResume={() => void handleToggleTranscription()}
+        />
         <AppStatusBar />
       </div>
       <div className={assistantMode === 'chat' ? 'contents' : 'hidden'}>
-        <ChatWorkspace onToggleTranscription={() => void handleToggleTranscription()} />
+        <ChatWorkspace
+          isPaused={isPaused}
+          onPauseTranscription={() => void handlePauseTranscription()}
+          onToggleTranscription={() => void handleToggleTranscription()}
+        />
       </div>
       <PrerequisitesChecker />
     </div>

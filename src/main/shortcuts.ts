@@ -18,15 +18,18 @@ import {
   getChatStream,
   isChatConfigured
 } from './ai'
-import { state } from './state'
-import { settings } from './settings'
+import { state, subscribeAppState } from './state'
+import { settings, subscribeAppSettings } from './settings'
 import { knowledgeService } from './knowledge/service'
 import type { KnowledgeRetrieval } from './knowledge/search'
 import {
   getTranscriptionText,
   clearTranscriptionText,
-  consumeTranscriptionText
+  consumeTranscriptionText,
+  subscribeTranscription
 } from './transcription'
+import type { TranscriptionEvent } from './transcription'
+import { TranscriptionAutoReplyQueue } from './transcription-auto-reply'
 import {
   CHAT_DOCUMENT_MAX_FILES,
   CHAT_DOCUMENT_MAX_FILE_BYTES,
@@ -116,6 +119,16 @@ let visionConversationMessages: ModelMessage[] = []
 let chatConversationMessages: ModelMessage[] = []
 let recentScreenshots: string[] = [] // 最近截图，水平预览 (限5张)
 let hasAppendSeparator = false
+
+const autoReplyQueue = new TranscriptionAutoReplyQueue(() => {
+  drainAutoReplyQueue()
+})
+let autoReplyNotice: string | null = null
+
+function clearAutoReplyQueue(): void {
+  autoReplyQueue.clear()
+  autoReplyNotice = null
+}
 
 function notifyVisionStreamFinished(streamContext: StreamContext): void {
   const mainWindow = global.mainWindow
@@ -291,12 +304,19 @@ function abortCurrentStream(reason: AbortReason) {
   currentStreamContext.controller.abort()
 }
 
+function releaseStream(streamContext: StreamContext): void {
+  if (currentStreamContext !== streamContext) return
+  currentStreamContext = null
+  drainAutoReplyQueue()
+}
+
 function setAssistantMode(mode: AssistantMode) {
   state.assistantMode = mode
   const mainWindow = global.mainWindow
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('sync-app-state', state)
   }
+  if (mode === 'chat') drainAutoReplyQueue()
 }
 
 function sendChatEvent(event: ChatEvent) {
@@ -397,7 +417,11 @@ function createChatModelText(text: string, documents: ChatDocument[]): string {
     .join('\n\n')
 }
 
-function validateChatRequest(text: string, documents: ChatDocument[] = []): string | null {
+function validateChatRequest(
+  text: string,
+  documents: ChatDocument[] = [],
+  allowBusy = false
+): string | null {
   const mainWindow = global.mainWindow
   if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage) {
     return '当前无法发送消息'
@@ -408,10 +432,66 @@ function validateChatRequest(text: string, documents: ChatDocument[] = []): stri
   if (!isChatConfigured()) {
     return '请先在设置中配置文字对话模型'
   }
-  if (currentStreamContext) {
+  if (currentStreamContext && !allowBusy) {
     return 'AI 正在生成，请先停止当前回答'
   }
   return null
+}
+
+function notifyAutoReplyIssue(message: string): void {
+  if (autoReplyNotice === message) return
+  autoReplyNotice = message
+  rejectChatRequest(message)
+}
+
+function handleTranscriptionEvent(event: TranscriptionEvent): void {
+  if (event.isPartial) return
+  if (!settings.transcriptionAutoReply || !state.inCoderPage) return
+  if (state.assistantMode !== 'chat') return
+  if (state.transcriptionPaused) return
+
+  if (!isChatConfigured()) {
+    notifyAutoReplyIssue('请先在设置中配置文字对话模型，语音自动回答暂未发送')
+    return
+  }
+
+  const pendingText = getTranscriptionText().trim()
+  if (!pendingText) return
+  if (!autoReplyQueue.canAccept(pendingText)) {
+    notifyAutoReplyIssue('语音自动回答队列已满，请先停止或清空当前对话')
+    return
+  }
+
+  const consumedText = consumeTranscriptionText().trim()
+  if (consumedText) {
+    autoReplyNotice = null
+    autoReplyQueue.add(consumedText)
+  }
+}
+
+function drainAutoReplyQueue(): void {
+  if (
+    !settings.transcriptionAutoReply ||
+    !state.inCoderPage ||
+    state.assistantMode !== 'chat' ||
+    state.transcriptionPaused ||
+    currentStreamContext ||
+    !isChatConfigured()
+  ) {
+    return
+  }
+
+  const text = autoReplyQueue.peek()
+  if (!text) return
+
+  const validationError = validateChatRequest(text, [], true)
+  if (validationError) {
+    notifyAutoReplyIssue(validationError)
+    return
+  }
+
+  autoReplyQueue.removeFirst()
+  acceptChatRequest(text, 'transcription')
 }
 
 async function runChatRequest(
@@ -486,9 +566,7 @@ async function runChatRequest(
     })
   }
 
-  if (currentStreamContext === streamContext) {
-    currentStreamContext = null
-  }
+  releaseStream(streamContext)
 }
 
 function acceptChatRequest(
@@ -552,6 +630,7 @@ function submitTranscriptionToChat(): ChatRequestResult {
 }
 
 function clearChatConversation(): void {
+  clearAutoReplyQueue()
   if (currentStreamContext?.kind === 'chat') {
     abortCurrentStream('clear-chat')
     currentStreamContext = null
@@ -561,6 +640,7 @@ function clearChatConversation(): void {
 }
 
 function clearKnowledgeScopedConversations(): void {
+  clearAutoReplyQueue()
   if (currentStreamContext) {
     abortCurrentStream('profile-switch')
     currentStreamContext = null
@@ -710,9 +790,7 @@ const callbacks: Record<string, () => void> = {
           mainWindow.webContents.send('solution-error', extractErrorMessage(error))
         }
       } finally {
-        if (currentStreamContext === streamContext) {
-          currentStreamContext = null
-        }
+        releaseStream(streamContext)
         if (!streamStarted && streamContext.reason === 'user') {
           mainWindow.webContents.send('solution-stopped')
         }
@@ -841,9 +919,7 @@ const callbacks: Record<string, () => void> = {
           mainWindow.webContents.send('solution-error', extractErrorMessage(error))
         }
       } finally {
-        if (currentStreamContext === streamContext) {
-          currentStreamContext = null
-        }
+        releaseStream(streamContext)
         if (!streamStarted && streamContext.reason === 'user') {
           mainWindow.webContents.send('solution-stopped')
         }
@@ -1057,6 +1133,23 @@ ipcMain.handle('clearChatConversation', () => {
   return true
 })
 
+subscribeTranscription(handleTranscriptionEvent)
+subscribeAppState((nextState) => {
+  if (!nextState.inCoderPage) {
+    clearAutoReplyQueue()
+  } else if (nextState.assistantMode === 'chat') {
+    drainAutoReplyQueue()
+  }
+})
+subscribeAppSettings((_nextSettings, patch) => {
+  if ('transcriptionAutoReply' in patch || 'chatApiKey' in patch || 'chatModel' in patch) {
+    drainAutoReplyQueue()
+  }
+  if ('transcriptionAutoReply' in patch) {
+    autoReplyNotice = null
+  }
+})
+
 ipcMain.handle('activateKnowledgeProfile', async (_event, profileId: string | null) => {
   const currentSnapshot = await knowledgeService.getSnapshot()
   if (currentSnapshot.activeProfileId === profileId) {
@@ -1178,9 +1271,7 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
       mainWindow.webContents.send('solution-error', extractErrorMessage(error))
     }
   } finally {
-    if (currentStreamContext === streamContext) {
-      currentStreamContext = null
-    }
+    releaseStream(streamContext)
     if (!streamStarted && streamContext.reason === 'user') {
       mainWindow.webContents.send('solution-stopped')
     }

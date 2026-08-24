@@ -35,6 +35,8 @@ export type ChatMessageSource = 'typed' | 'transcription'
 
 export type TranscriptionProvider = 'dashscope' | 'volcengine'
 
+export type TranscriptionAudioSource = 'system' | 'microphone' | 'mixed'
+
 export const DEFAULT_DASHSCOPE_ASR_MODEL = 'fun-asr-realtime'
 export const DEFAULT_DASHSCOPE_ASR_WS_URL = 'wss://dashscope.aliyuncs.com/api-ws/v1/inference/'
 export const DEFAULT_VOLCENGINE_ASR_MODEL = 'bigmodel'

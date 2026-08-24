@@ -4,6 +4,7 @@ import type { AssistantMode } from '../../../../preload/contracts'
 interface AppState {
   ignoreMouse: boolean
   assistantMode: AssistantMode
+  transcriptionPaused: boolean
 }
 
 interface AppStore extends AppState {
@@ -15,7 +16,8 @@ interface AppStore extends AppState {
 
 const defaultState: AppState = {
   ignoreMouse: false,
-  assistantMode: 'screenshot'
+  assistantMode: 'screenshot',
+  transcriptionPaused: false
 }
 
 export const useAppStore = create<AppStore>()((set) => ({

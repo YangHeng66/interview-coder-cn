@@ -38,6 +38,7 @@ import {
   OPACITY_STEP,
   type ApiProtocol,
   type ChatProvider,
+  type TranscriptionAudioSource,
   type TranscriptionProvider
 } from '@/lib/store/settings'
 import {
@@ -82,6 +83,8 @@ export default function SettingsPage() {
     activeSceneId,
     screenshotAutoSave,
     screenshotDir,
+    transcriptionAudioSource,
+    transcriptionAutoReply,
     transcriptionProvider,
     dashscopeApiKey,
     dashscopeAsrModel,
@@ -420,6 +423,48 @@ export default function SettingsPage() {
           </h2>
 
           <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <label
+                htmlFor="transcription-audio-source"
+                className="min-w-0 text-sm font-medium"
+              >
+                <span className="block">音频来源</span>
+                <span className="block text-xs font-normal text-gray-600">
+                  可同时识别你的麦克风和系统回环声音
+                </span>
+              </label>
+              <Select
+                value={transcriptionAudioSource}
+                onValueChange={(value) =>
+                  updateSetting('transcriptionAudioSource', value as TranscriptionAudioSource)
+                }
+              >
+                <SelectTrigger id="transcription-audio-source" className="w-60 bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="system">系统音频（默认）</SelectItem>
+                  <SelectItem value="microphone">仅麦克风</SelectItem>
+                  <SelectItem value="mixed">麦克风 + 系统音频</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 rounded-md border border-gray-400/50 bg-white/40 px-3 py-2.5">
+              <label htmlFor="transcription-auto-reply" className="min-w-0 text-sm font-medium">
+                <span className="block">语音自动回答</span>
+                <span className="mt-0.5 block text-xs font-normal text-gray-600">
+                  文字对话中检测到句末或停顿后自动发送；关闭时仍可手动发送转写
+                </span>
+              </label>
+              <Switch
+                id="transcription-auto-reply"
+                checked={transcriptionAutoReply}
+                onCheckedChange={(checked) => updateSetting('transcriptionAutoReply', checked)}
+                aria-label="语音自动回答"
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <label htmlFor="transcription-provider" className="text-sm font-medium">
                 语音服务商
@@ -600,22 +645,27 @@ export default function SettingsPage() {
               </>
             )}
 
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <label className="min-w-0 text-sm font-medium">
                 音频输入设备
-                <span className="ml-2 text-xs font-light">选择麦克风，留空则捕获系统音频</span>
+                <span className="block text-xs font-normal text-gray-600">
+                  {transcriptionAudioSource === 'system'
+                    ? '系统音频模式不使用麦克风设备'
+                    : '选择麦克风；留空使用系统默认麦克风'}
+                </span>
               </label>
               <Select
-                value={audioInputDeviceId || 'system'}
+                value={audioInputDeviceId || 'default'}
+                disabled={transcriptionAudioSource === 'system'}
                 onValueChange={(val) =>
-                  updateSetting('audioInputDeviceId', val === 'system' ? '' : val)
+                  updateSetting('audioInputDeviceId', val === 'default' ? '' : val)
                 }
               >
                 <SelectTrigger className="w-60 bg-white">
-                  <SelectValue placeholder="系统音频（默认）" />
+                  <SelectValue placeholder="系统默认麦克风" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="system">系统音频（默认）</SelectItem>
+                  <SelectItem value="default">系统默认麦克风</SelectItem>
                   {audioDevices
                     .filter((d) => d.kind === 'audioinput')
                     .map((d) => (
@@ -931,7 +981,8 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <p className="text-sm">
               截图、语音转录、文字对话和临时附件会发送给您配置的 AI
-              服务。用户知识库原件与索引保存在本机；启用知识库后，仅将本次命中的参考片段随问题发送给 AI
+              服务。开启自动回答后，最终语音转录会自动发送到文字模型；混合音频会同时采集麦克风和系统回环声音。
+              用户知识库原件与索引保存在本机；启用知识库后，仅将本次命中的参考片段随问题发送给 AI
               服务，内置前端资料包不会写入用户文档目录。
             </p>
             {isMac && (

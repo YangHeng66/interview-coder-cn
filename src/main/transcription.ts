@@ -6,6 +6,7 @@ import { getTranscriptionConfigError, type TranscriptionConfig } from '../preloa
 import { TranscriptionBuffer } from './transcription-buffer'
 
 const FINISH_TIMEOUT_MS = 5000
+const PARTIAL_IDLE_TIMEOUT_MS = 1200
 const VOLCENGINE_FULL_REQUEST_HEADER = Buffer.from([0x11, 0x10, 0x11, 0x00])
 const VOLCENGINE_AUDIO_REQUEST_HEADER = Buffer.from([0x11, 0x20, 0x01, 0x00])
 const VOLCENGINE_FINAL_AUDIO_REQUEST_HEADER = Buffer.from([0x11, 0x22, 0x01, 0x00])
@@ -20,6 +21,15 @@ type TranscriptionSession = {
   stoppedNotified: boolean
   pendingAudio: Buffer | null
   finishTimer: NodeJS.Timeout | null
+  partialTimer: NodeJS.Timeout | null
+}
+
+export type TranscriptionEventReason = 'provider' | 'silence' | 'stopped'
+
+export type TranscriptionEvent = {
+  text: string
+  isPartial: boolean
+  reason?: TranscriptionEventReason
 }
 
 type VolcengineFrame = {
@@ -33,12 +43,57 @@ type VolcengineFrame = {
 let activeSession: TranscriptionSession | null = null
 let isTranscribing = false
 const transcriptionBuffer = new TranscriptionBuffer()
+const transcriptionListeners = new Set<(event: TranscriptionEvent) => void>()
+
+export function subscribeTranscription(listener: (event: TranscriptionEvent) => void): () => void {
+  transcriptionListeners.add(listener)
+  return () => transcriptionListeners.delete(listener)
+}
 
 function sendToRenderer(channel: string, ...args: unknown[]) {
   const mainWindow = global.mainWindow
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(channel, ...args)
   }
+}
+
+function publishTranscription(isPartial: boolean, reason?: TranscriptionEventReason): void {
+  const event: TranscriptionEvent = {
+    text: getTranscriptionText(),
+    isPartial,
+    reason
+  }
+  sendToRenderer('transcription-text', {
+    text: event.text,
+    isPartial: event.isPartial
+  })
+  transcriptionListeners.forEach((listener) => {
+    try {
+      listener(event)
+    } catch (error) {
+      console.error('Transcription listener failed:', error)
+    }
+  })
+}
+
+function clearPartialTimer(session: TranscriptionSession): void {
+  if (!session.partialTimer) return
+  clearTimeout(session.partialTimer)
+  session.partialTimer = null
+}
+
+function schedulePartialFinalization(session: TranscriptionSession): void {
+  clearPartialTimer(session)
+  const snapshot = getTranscriptionText()
+  if (!snapshot.trim()) return
+
+  session.partialTimer = setTimeout(() => {
+    session.partialTimer = null
+    if (activeSession !== session || session.finishing || getTranscriptionText() !== snapshot) {
+      return
+    }
+    publishTranscription(false, 'silence')
+  }, PARTIAL_IDLE_TIMEOUT_MS)
 }
 
 function notifyStopped(session: TranscriptionSession): void {
@@ -68,7 +123,12 @@ function finishSession(session: TranscriptionSession, notify = true): void {
     clearTimeout(session.finishTimer)
     session.finishTimer = null
   }
+  clearPartialTimer(session)
+  const shouldPublishFinal = session.finishing
   transcriptionBuffer.finalizeCurrentPartial()
+  if (shouldPublishFinal && getTranscriptionText().trim()) {
+    publishTranscription(false, 'stopped')
+  }
   activeSession = null
   isTranscribing = false
   disposeSocket(session.socket)
@@ -201,14 +261,14 @@ function attachDashScopeHandlers(session: TranscriptionSession): void {
         const text = typeof sentence.text === 'string' ? sentence.text : ''
         const sentenceEnd = sentence.sentence_end === true
         if (sentenceEnd) {
+          clearPartialTimer(session)
           transcriptionBuffer.finishSentence(text)
+          publishTranscription(false, 'provider')
         } else {
           transcriptionBuffer.updatePartial(text)
+          publishTranscription(true)
+          schedulePartialFinalization(session)
         }
-        sendToRenderer('transcription-text', {
-          text: getTranscriptionText(),
-          isPartial: !sentenceEnd
-        })
         return
       }
 
@@ -353,10 +413,14 @@ function handleVolcengineMessage(session: TranscriptionSession, data: WebSocket.
           !!lastUtterance &&
           typeof lastUtterance === 'object' &&
           (lastUtterance as Record<string, unknown>).definite === true
-        sendToRenderer('transcription-text', {
-          text: getTranscriptionText(),
-          isPartial: !frame.isFinal && !lastIsDefinite
-        })
+        const isPartial = !frame.isFinal && !lastIsDefinite
+        if (isPartial) {
+          publishTranscription(true)
+          schedulePartialFinalization(session)
+        } else {
+          clearPartialTimer(session)
+          publishTranscription(false, 'provider')
+        }
       }
     }
   }
@@ -416,7 +480,8 @@ function startTranscription(value: unknown): void {
     finishing: false,
     stoppedNotified: false,
     pendingAudio: null,
-    finishTimer: null
+    finishTimer: null,
+    partialTimer: null
   }
 
   activeSession = session

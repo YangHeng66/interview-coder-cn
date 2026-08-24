@@ -7,6 +7,8 @@ import {
   MicOff,
   OctagonX,
   Paperclip,
+  Pause,
+  Play,
   RotateCcw,
   Send,
   Trash2,
@@ -35,7 +37,15 @@ import {
 
 const AUTO_SCROLL_THRESHOLD = 120
 
-export function ChatWorkspace({ onToggleTranscription }: { onToggleTranscription: () => void }) {
+export function ChatWorkspace({
+  isPaused,
+  onPauseTranscription,
+  onToggleTranscription
+}: {
+  isPaused: boolean
+  onPauseTranscription: () => void
+  onToggleTranscription: () => void
+}) {
   const { messages, isLoading, errorMessage, setErrorMessage } = useChatStore()
   const scrollRef = useRef<HTMLDivElement>(null)
   const shouldAutoScrollRef = useRef(true)
@@ -93,7 +103,7 @@ export function ChatWorkspace({ onToggleTranscription }: { onToggleTranscription
           {messages.length === 0 ? (
             <div className="flex min-h-56 flex-col items-center justify-center text-center text-gray-200/70">
               <Bot className="mb-3 size-7" />
-              <p className="text-sm">输入问题，或将实时语音转录直接发送给 AI</p>
+              <p className="text-sm">输入问题，或将实时语音转录自动交给 AI 回答</p>
             </div>
           ) : (
             <div className="space-y-5">
@@ -109,7 +119,12 @@ export function ChatWorkspace({ onToggleTranscription }: { onToggleTranscription
         </div>
       </div>
 
-      <ChatComposer isLoading={isLoading} onToggleTranscription={onToggleTranscription} />
+      <ChatComposer
+        isLoading={isLoading}
+        isPaused={isPaused}
+        onPauseTranscription={onPauseTranscription}
+        onToggleTranscription={onToggleTranscription}
+      />
     </div>
   )
 }
@@ -216,15 +231,20 @@ function ChatMessageItem({
 
 function ChatComposer({
   isLoading,
+  isPaused,
+  onPauseTranscription,
   onToggleTranscription
 }: {
   isLoading: boolean
+  isPaused: boolean
+  onPauseTranscription: () => void
   onToggleTranscription: () => void
 }) {
   const [draft, setDraft] = useState('')
   const [documents, setDocuments] = useState<ChatDocument[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { isTranscribing, transcriptionText } = useTranscriptionStore()
+  const transcriptionAutoReply = useSettingsStore((state) => state.transcriptionAutoReply)
   const transcriptionConfigError = useSettingsStore((state) =>
     getTranscriptionConfigError(createTranscriptionConfig(state))
   )
@@ -326,20 +346,36 @@ function ChatComposer({
           </div>
         )}
 
-        {(isTranscribing || transcriptionText) && (
+        {(isTranscribing || isPaused || transcriptionText) && (
           <div className="mb-2 flex min-h-8 items-start gap-2 border-b border-white/10 pb-2">
             <Mic
-              className={`mt-1 size-4 shrink-0 ${isTranscribing ? 'text-green-300' : 'text-gray-300'}`}
+              className={`mt-1 size-4 shrink-0 ${
+                isTranscribing ? 'text-green-300' : isPaused ? 'text-amber-300' : 'text-gray-300'
+              }`}
             />
             <div className="max-h-[4.2em] min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-[1.4em] text-gray-100/85">
-              {transcriptionText || '等待语音输入...'}
+              {transcriptionText || (isPaused ? '语音识别已暂停' : '等待语音输入...')}
             </div>
+            {isTranscribing && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7 text-amber-100 hover:bg-amber-400/15 hover:text-amber-50"
+                onClick={onPauseTranscription}
+                aria-label="暂停语音识别"
+                title="暂停语音识别"
+              >
+                <Pause className="size-3.5" />
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="size-7 text-gray-100 hover:bg-white/10 hover:text-white"
               onClick={() => void window.api.sendTranscriptionToChat()}
+              disabled={!transcriptionText.trim()}
               aria-label="发送语音转录"
             >
               <Send className="size-3.5" />
@@ -375,10 +411,25 @@ function ChatComposer({
               isTranscribing ? 'bg-green-400/15 text-green-200' : ''
             }`}
             onClick={onToggleTranscription}
-            aria-label={isTranscribing ? '停止语音识别' : '开始语音识别'}
-            title={transcriptionConfigError ?? undefined}
+            aria-label={
+              isPaused ? '继续语音识别' : isTranscribing ? '停止语音识别' : '开始语音识别'
+            }
+            title={
+              transcriptionConfigError ??
+              (isPaused
+                ? '继续语音识别'
+                : transcriptionAutoReply
+                  ? '已开启语音自动回答'
+                  : undefined)
+            }
           >
-            {isTranscribing ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+            {isPaused ? (
+              <Play className="size-4" />
+            ) : isTranscribing ? (
+              <MicOff className="size-4" />
+            ) : (
+              <Mic className="size-4" />
+            )}
           </Button>
 
           <Textarea

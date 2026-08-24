@@ -57,7 +57,7 @@ export default function HelpPage() {
               </li>
               <li className="flex gap-2">
                 <MessageCircle className="h-6 w-4" />
-                <span>使用独立文字模型进行多轮对话，并可随时提交实时语音转录。</span>
+                <span>使用独立文字模型进行多轮对话，可手动或自动提交实时语音转录。</span>
               </li>
               <li className="flex gap-2">
                 <EyeOff className="h-6 w-4" />
@@ -94,7 +94,7 @@ export default function HelpPage() {
           <div className="border border-gray-400 rounded-lg p-4">
             <h3 className="font-semibold mb-2">3. 文字与语音对话</h3>
             <p className="text-sm text-gray-700">
-              在标题栏切换到「文字对话」，可直接输入问题；开始语音识别后，也可从输入区或快捷键发送当前转录。
+              在标题栏切换到「文字对话」，可直接输入问题；开始语音识别后，可从输入区或快捷键发送当前转录，也可以在设置中开启「语音自动回答」，让句末或停顿后的语音自动进入回答队列。
             </p>
           </div>
         </HelpSection>

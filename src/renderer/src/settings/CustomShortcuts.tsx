@@ -109,7 +109,7 @@ export function CustomShortcuts() {
             disabled={!transcriptionConfigured}
           />
           <Shortcut
-            label="发送语音到文字对话"
+            label="手动发送语音到文字对话"
             description="保持识别运行，将当前未发送的转录作为独立消息提交"
             shortcut="sendTranscriptionToChat"
             disabled={!transcriptionConfigured}
