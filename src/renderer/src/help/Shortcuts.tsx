@@ -64,7 +64,7 @@ const getShortcutDescription = (action: string) => {
     stopSolutionStream: '停止生成',
     toggleTranscription: '开始/暂停实时语音转录',
     clearTranscription: '清除转录文本（不提交给AI）',
-    sendTranscriptionToChat: '发送当前语音转录到文字对话',
+    sendTranscriptionToChat: '手动发送当前语音转录到文字对话（自动回答关闭时使用）',
     pageUp: '向上翻页',
     pageDown: '向下翻页',
     moveMainWindowUp: '向上移动窗口',

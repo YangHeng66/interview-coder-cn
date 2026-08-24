@@ -66,9 +66,9 @@ const faqs = [
     answer: (
       <span>
         语音转录功能可以实时将面试官的语音或题目朗读转为文字，辅助 AI
-        更好地理解题意。使用前需在「设置」中配置百炼平台 API Key，然后按下
+        更好地理解题意。使用前需在「设置」中配置所选语音服务商的 API Key，然后按下
         <ShortcutRenderer shortcut={`${platformAlt}+T`} className="text-xs mx-1" />
-        开始/暂停转录。转录文本既可在截图时附带，也可随时单独发送到文字对话。
+        开始/暂停转录。识别过程中可点击转录条上的暂停按钮，保留已识别文本，之后点击继续即可重新建立识别连接；暂停只停止新的语音采集，当前 AI 回答不会被中断，需要停止回答时使用输入区的停止按钮。可在「设置」中选择系统音频、麦克风或混合来源；混合来源会同时采集两路声音，但不会标注说话人。转录文本既可在截图时附带，也可随时单独发送到文字对话。
       </span>
     )
   },
@@ -76,12 +76,9 @@ const faqs = [
     question: '识别过程中如何让 AI 回答当前语音？',
     answer: (
       <span>
-        按下
-        <ShortcutRenderer
-          shortcut="CommandOrControl+Alt+Enter"
-          className="text-xs mx-1"
-        />
-        即可将尚未发送的转录作为一条独立消息提交。语音识别会继续运行，已经发送的部分不会重复出现。
+        若希望无需手动发送，请在「设置 → 语音转录」打开「语音自动回答」。在文字对话模式下，检测到句末或短暂停顿后会自动提交；AI 正在回答时，后续语音会排队处理。也可以继续按下
+        <ShortcutRenderer shortcut="CommandOrControl+Alt+Enter" className="text-xs mx-1" />
+        手动提交当前转录，语音识别会继续运行，已经发送的部分不会重复出现。
       </span>
     )
   },

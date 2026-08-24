@@ -12,8 +12,11 @@ import {
   type ApiProtocol,
   type ChatProvider,
   type ThinkingLevel,
+  type TranscriptionAudioSource,
   type TranscriptionProvider
 } from '../preload/contracts'
+
+const settingsListeners = new Set<(settings: AppSettings, patch: Partial<AppSettings>) => void>()
 
 ipcMain.handle('getAppSettings', () => {
   return settings
@@ -21,6 +24,13 @@ ipcMain.handle('getAppSettings', () => {
 
 ipcMain.handle('updateAppSettings', (_event, _settings) => {
   Object.assign(settings, _settings)
+  settingsListeners.forEach((listener) => {
+    try {
+      listener(settings, _settings)
+    } catch (error) {
+      console.error('App settings listener failed:', error)
+    }
+  })
   if ('hideDockIcon' in _settings) {
     applyDockVisibility(settings.hideDockIcon)
   }
@@ -80,6 +90,8 @@ export const settings = {
   toolbarHoverDelay: 0,
   screenshotAutoSave: false,
   screenshotDir: '',
+  transcriptionAudioSource: 'system' as TranscriptionAudioSource,
+  transcriptionAutoReply: false,
   transcriptionProvider: 'dashscope' as TranscriptionProvider,
   dashscopeApiKey: '',
   dashscopeAsrModel: DEFAULT_DASHSCOPE_ASR_MODEL,
@@ -94,3 +106,10 @@ export const settings = {
 }
 
 export type AppSettings = typeof settings
+
+export function subscribeAppSettings(
+  listener: (settings: AppSettings, patch: Partial<AppSettings>) => void
+): () => void {
+  settingsListeners.add(listener)
+  return () => settingsListeners.delete(listener)
+}

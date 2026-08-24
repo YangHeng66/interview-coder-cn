@@ -17,6 +17,7 @@ import {
   type ApiProtocol,
   type ChatProvider,
   type ThinkingLevel,
+  type TranscriptionAudioSource,
   type TranscriptionProvider
 } from '../../../../preload/contracts'
 
@@ -30,6 +31,7 @@ export type {
   ChatProvider,
   ThinkingLevel,
   TranscriptionConfig,
+  TranscriptionAudioSource,
   TranscriptionProvider
 } from '../../../../preload/contracts'
 
@@ -143,6 +145,8 @@ export interface Settings {
   screenshotAutoSave: boolean
   screenshotDir: string
 
+  transcriptionAudioSource: TranscriptionAudioSource
+  transcriptionAutoReply: boolean
   transcriptionProvider: TranscriptionProvider
   dashscopeApiKey: string
   dashscopeAsrModel: string
@@ -199,6 +203,8 @@ const defaultSettings: Settings = {
   screenshotAutoSave: false,
   screenshotDir: '',
 
+  transcriptionAudioSource: 'system',
+  transcriptionAutoReply: false,
   transcriptionProvider: 'dashscope',
   dashscopeApiKey: '',
   dashscopeAsrModel: DEFAULT_DASHSCOPE_ASR_MODEL,
@@ -308,7 +314,7 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'interview-coder-settings',
-      version: 12,
+      version: 13,
       migrate: (persisted, version) => {
         const state = persisted as Partial<Settings>
         // Drop the legacy codeLanguage field (language now lives in the prompt text)
@@ -318,6 +324,10 @@ export const useSettingsStore = create<SettingsStore>()(
           state.chatModelThinkingLevels = {}
           state.apiBaseURLHistory = rememberBaseURL([], state.apiBaseURL ?? '')
           state.chatApiBaseURLHistory = rememberBaseURL([], state.chatApiBaseURL ?? '')
+        }
+        if (version < 13) {
+          state.transcriptionAudioSource = 'system'
+          state.transcriptionAutoReply = false
         }
         if (version < 11) {
           state.transcriptionProvider = 'dashscope'
@@ -384,6 +394,10 @@ export const useSettingsStore = create<SettingsStore>()(
           state.chatApiBaseURLHistory,
           state.chatApiBaseURL
         )
+        if (!['system', 'microphone', 'mixed'].includes(state.transcriptionAudioSource)) {
+          state.transcriptionAudioSource = 'system'
+        }
+        state.transcriptionAutoReply = state.transcriptionAutoReply === true
         state.customPrompt = composeCustomPrompt(state.scenes, state.activeSceneId)
         return state
       }
