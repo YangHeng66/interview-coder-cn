@@ -1,4 +1,4 @@
-import { streamText, type ModelMessage } from 'ai'
+import { generateText, streamText, type ModelMessage } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { settings, AppSettings } from './settings'
 import {
@@ -9,6 +9,15 @@ import {
   type ApiProtocol,
   type ThinkingLevel
 } from '../preload/contracts'
+import {
+  buildKnowledgeQueryRewritePrompt,
+  normalizeKnowledgeQueryExpansion
+} from './knowledge/query'
+
+const KNOWLEDGE_QUERY_REWRITE_SYSTEM_PROMPT = `你是本地知识库的检索查询规划器。
+理解用户当前问题在最近对话中的真实意图，把口语、简称、代词和业务描述改写成知识库文档中可能出现的技术表达。
+不要回答问题，不要判断资料是否存在，不要编造事实。只输出两部分：一行完整的独立问题，以及一行空格分隔的相关技术关键词、组件名、协议名或中英文同义表达。总长度控制在 500 个中文字符以内。`
+const KNOWLEDGE_QUERY_REWRITE_TIMEOUT_MS = 8_000
 
 // The system prompt is fully managed by the renderer (prompt scenes in the
 // settings store) and synced here via updateAppSettings on app startup
@@ -184,6 +193,32 @@ function getChatConnection(): ConnectionSettings {
 export function isChatConfigured(): boolean {
   const connection = getChatConnection()
   return Boolean(connection.apiKey.trim() && connection.model)
+}
+
+export async function rewriteKnowledgeQuery(
+  mode: StreamKind,
+  question: string,
+  recentConversation = '',
+  abortSignal?: AbortSignal
+): Promise<string> {
+  if (!question.trim()) return ''
+  const connection = mode === 'chat' ? getChatConnection() : getVisionConnection()
+  if (!connection.apiKey.trim() || !connection.model.trim()) return ''
+  const rewriteSignal = abortSignal
+    ? AbortSignal.any([abortSignal, AbortSignal.timeout(KNOWLEDGE_QUERY_REWRITE_TIMEOUT_MS)])
+    : AbortSignal.timeout(KNOWLEDGE_QUERY_REWRITE_TIMEOUT_MS)
+
+  const result = await generateText({
+    model: createLanguageModel(connection),
+    system: KNOWLEDGE_QUERY_REWRITE_SYSTEM_PROMPT,
+    prompt: buildKnowledgeQueryRewritePrompt(question, recentConversation),
+    maxOutputTokens: 300,
+    maxRetries: 1,
+    providerOptions: getProviderOptions(connection),
+    abortSignal: rewriteSignal
+  })
+
+  return normalizeKnowledgeQueryExpansion(result.text)
 }
 
 export function getSolutionStream(

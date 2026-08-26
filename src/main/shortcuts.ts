@@ -16,7 +16,8 @@ import {
   getFollowUpStream,
   getGeneralStream,
   getChatStream,
-  isChatConfigured
+  isChatConfigured,
+  rewriteKnowledgeQuery
 } from './ai'
 import { state, subscribeAppState } from './state'
 import { settings, subscribeAppSettings } from './settings'
@@ -326,6 +327,30 @@ function sendChatEvent(event: ChatEvent) {
   }
 }
 
+function getMessageText(message: ModelMessage): string {
+  if (typeof message.content === 'string') return message.content
+  if (!Array.isArray(message.content)) return ''
+  return message.content
+    .map((part) => {
+      if (!part || typeof part !== 'object' || !('type' in part) || part.type !== 'text') return ''
+      return 'text' in part && typeof part.text === 'string' ? part.text : ''
+    })
+    .filter(Boolean)
+    .join('\n')
+}
+
+function createRecentKnowledgeContext(messages: ModelMessage[]): string {
+  return messages
+    .slice(-6)
+    .map((message) => {
+      const text = getMessageText(message).trim()
+      return text ? `${message.role}: ${text}` : ''
+    })
+    .filter(Boolean)
+    .join('\n')
+    .slice(-4_000)
+}
+
 function sendKnowledgeContextUsed(
   mode: KnowledgeContextUsed['mode'],
   retrieval: KnowledgeRetrieval,
@@ -345,10 +370,23 @@ function sendKnowledgeContextUsed(
 async function retrieveKnowledgeContext(
   mode: KnowledgeContextUsed['mode'],
   query: string,
-  requestId?: string
+  requestId?: string,
+  recentConversation = '',
+  abortSignal?: AbortSignal
 ): Promise<KnowledgeRetrieval | null> {
   try {
-    const retrieval = await knowledgeService.retrieve(query)
+    let semanticQuery = ''
+    if (query.trim()) {
+      try {
+        semanticQuery = await rewriteKnowledgeQuery(mode, query, recentConversation, abortSignal)
+      } catch (error) {
+        if (abortSignal?.aborted) return null
+        console.warn('AI knowledge query rewrite failed; using the original query:', error)
+      }
+    }
+    if (abortSignal?.aborted) return null
+
+    const retrieval = await knowledgeService.retrieve(query, semanticQuery)
     if (retrieval) sendKnowledgeContextUsed(mode, retrieval, requestId)
     return retrieval
   } catch (error) {
@@ -506,7 +544,13 @@ async function runChatRequest(
   let streamError: unknown = null
 
   try {
-    const knowledge = await retrieveKnowledgeContext('chat', knowledgeQuery, requestId)
+    const knowledge = await retrieveKnowledgeContext(
+      'chat',
+      knowledgeQuery,
+      requestId,
+      createRecentKnowledgeContext(chatConversationMessages),
+      streamContext.controller.signal
+    )
     if (!streamContext.controller.signal.aborted) {
       const chatStream = getChatStream(
         requestMessages,
@@ -738,7 +782,13 @@ const callbacks: Record<string, () => void> = {
       let streamStarted = false
       let assistantResponse = ''
       try {
-        const knowledge = await retrieveKnowledgeContext('vision', transcriptionText)
+        const knowledge = await retrieveKnowledgeContext(
+          'vision',
+          transcriptionText,
+          undefined,
+          createRecentKnowledgeContext(visionConversationMessages),
+          streamContext.controller.signal
+        )
         const solutionStream = getSolutionStream(
           visionConversationMessages,
           streamContext.controller.signal,
@@ -867,7 +917,13 @@ const callbacks: Record<string, () => void> = {
       let streamStarted = false
       let assistantResponse = ''
       try {
-        const knowledge = await retrieveKnowledgeContext('vision', transcriptionText)
+        const knowledge = await retrieveKnowledgeContext(
+          'vision',
+          transcriptionText,
+          undefined,
+          createRecentKnowledgeContext(visionConversationMessages),
+          streamContext.controller.signal
+        )
         const solutionStream = getGeneralStream(
           visionConversationMessages,
           streamContext.controller.signal,
@@ -1208,7 +1264,13 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
   let assistantResponse = ''
 
   try {
-    const knowledge = await retrieveKnowledgeContext('vision', question)
+    const knowledge = await retrieveKnowledgeContext(
+      'vision',
+      question,
+      undefined,
+      createRecentKnowledgeContext(visionConversationMessages),
+      streamContext.controller.signal
+    )
     const followUpStream = getFollowUpStream(
       visionConversationMessages,
       question,

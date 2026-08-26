@@ -239,12 +239,11 @@ export function formatKnowledgeContext(options: {
     selectedIds.add(chunk.id)
   }
 
-  options.fallbackChunks.filter((chunk) => chunk.priority === 'key').forEach(addChunk)
-  // A bundled pack is not tied to the user's profile, so callers can reserve
-  // one representative chunk to make the enabled pack visible in the merged
-  // context even when the query has no exact keyword match.
-  options.requiredChunks?.forEach(addChunk)
+  // Query matches must win the limited context budget. Key documents and the
+  // bundled pack are fallbacks, not a reason to hide a more relevant chunk.
   options.rankedChunks.forEach(addChunk)
+  options.fallbackChunks.filter((chunk) => chunk.priority === 'key').forEach(addChunk)
+  options.requiredChunks?.forEach(addChunk)
   options.fallbackChunks.forEach(addChunk)
 
   const blocks: string[] = []

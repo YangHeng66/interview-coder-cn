@@ -445,9 +445,7 @@ class KnowledgeService {
     }
   }
 
-  async setBuiltinKnowledgeEnabled(
-    enabled: boolean
-  ): Promise<KnowledgeResult<KnowledgeSnapshot>> {
+  async setBuiltinKnowledgeEnabled(enabled: boolean): Promise<KnowledgeResult<KnowledgeSnapshot>> {
     try {
       await this.ensureLoaded()
       if (typeof enabled !== 'boolean') return failure('内置前端知识开关参数无效')
@@ -689,11 +687,11 @@ class KnowledgeService {
     this.indexDirty = false
   }
 
-  async retrieve(query: string): Promise<KnowledgeRetrieval | null> {
+  async retrieve(query: string, semanticQuery = ''): Promise<KnowledgeRetrieval | null> {
     await this.ensureLoaded()
-    const userProfile = this.manifest.profiles.find(
-      (candidate) => candidate.id === this.manifest.activeProfileId
-    ) ?? null
+    const userProfile =
+      this.manifest.profiles.find((candidate) => candidate.id === this.manifest.activeProfileId) ??
+      null
     const includeBuiltin = this.manifest.builtinFrontendKnowledgeEnabled
     if (!userProfile && !includeBuiltin) return null
 
@@ -704,10 +702,11 @@ class KnowledgeService {
       ...(includeBuiltin ? BUILTIN_FRONTEND_DOCUMENTS.map((document) => document.id) : []),
       ...(userProfile?.documentLinks.map((link) => link.documentId) ?? [])
     ])
-    const profileQuery = [profile.company, profile.role, profile.jobDescription, query]
+    const userQuery = [query, semanticQuery].filter(Boolean).join('\n')
+    const profileQuery = [profile.company, profile.role, profile.jobDescription]
       .filter(Boolean)
       .join('\n')
-    const rankedChunks = this.searchIndex.search(profileQuery, allowedDocumentIds)
+    const rankedChunks = this.searchIndex.search(userQuery || profileQuery, allowedDocumentIds)
     const userFallbackChunks =
       userProfile?.documentLinks
         .map((link) => {
@@ -716,13 +715,13 @@ class KnowledgeService {
         })
         .filter((chunk) => chunk !== null) ?? []
     const builtinFallbackChunks = includeBuiltin
-      ? BUILTIN_FRONTEND_DOCUMENTS.map((document) => this.searchIndex.getFirstChunk(document.id)).filter(
-          (chunk) => chunk !== undefined
-        )
+      ? BUILTIN_FRONTEND_DOCUMENTS.map((document) =>
+          this.searchIndex.getFirstChunk(document.id)
+        ).filter((chunk) => chunk !== undefined)
       : []
     const representativeBuiltinChunk = includeBuiltin
-      ? rankedChunks.find((chunk) => BUILTIN_FRONTEND_DOCUMENT_IDS.has(chunk.documentId)) ??
-        this.searchIndex.getFirstChunk(BUILTIN_FRONTEND_DOCUMENTS[0]?.id ?? '')
+      ? (rankedChunks.find((chunk) => BUILTIN_FRONTEND_DOCUMENT_IDS.has(chunk.documentId)) ??
+        this.searchIndex.getFirstChunk(BUILTIN_FRONTEND_DOCUMENTS[0]?.id ?? ''))
       : undefined
     const requiredChunks = representativeBuiltinChunk ? [representativeBuiltinChunk] : []
 
