@@ -424,10 +424,7 @@ export default function SettingsPage() {
 
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <label
-                htmlFor="transcription-audio-source"
-                className="min-w-0 text-sm font-medium"
-              >
+              <label htmlFor="transcription-audio-source" className="min-w-0 text-sm font-medium">
                 <span className="block">音频来源</span>
                 <span className="block text-xs font-normal text-gray-600">
                   可同时识别你的麦克风和系统回环声音
@@ -964,7 +961,7 @@ export default function SettingsPage() {
                     if (dir) updateSetting('screenshotDir', dir)
                   }}
                 >
-                  {screenshotDir || '默认: 图片/InterviewCoder'}
+                  {screenshotDir || '默认: 图片/桌面多模态AI助手'}
                 </button>
               </div>
             )}

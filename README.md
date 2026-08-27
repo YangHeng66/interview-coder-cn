@@ -1,7 +1,7 @@
-# 截屏解题助手
+# 桌面多模态 AI 助手
 
 <p align="center">
-  <img src="./build/icon.png" alt="截屏解题助手" width="128" />
+  <img src="./build/icon.png" alt="桌面多模态 AI 助手" width="128" />
 </p>
 
 <p align="center">

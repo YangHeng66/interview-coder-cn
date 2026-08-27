@@ -1,7 +1,7 @@
 {
   "name": "interview-coder-cn",
   "version": "1.8.0",
-  "description": "截屏解题助手，实时截屏并生成解题思路和答案",
+  "description": "桌面多模态 AI 助手，支持截图分析、文字对话、实时语音与本地知识检索",
   "main": "./out/main/index.js",
   "devEngines": {
     "packageManager": {
@@ -30,12 +30,12 @@
     "url": "git+https://github.com/YangHeng66/interview-coder-cn.git"
   },
   "keywords": [
-    "解题助手",
-    "面试",
-    "在线考试",
-    "截屏",
-    "coding interview",
-    "LeetCode"
+    "AI 助手",
+    "多模态",
+    "Electron",
+    "截图分析",
+    "语音转录",
+    "本地知识库"
   ],
   "author": "YangHeng66",
   "license": "CC BY-NC 4.0",

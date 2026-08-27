@@ -100,7 +100,7 @@ export function AppHeader() {
 
   return (
     <div id="app-header" className="relative flex items-center px-2 text-white">
-      <div className="hidden text-xs font-medium text-white/70 sm:block">截屏解题助手</div>
+      <div className="hidden text-xs font-medium text-white/70 sm:block">桌面多模态 AI 助手</div>
 
       <div className="actions absolute left-1/2 top-1/2 flex h-7 -translate-x-1/2 -translate-y-1/2 rounded-md bg-black/20 p-0.5">
         <button
@@ -134,10 +134,7 @@ export function AppHeader() {
       <div
         className={`actions ml-auto flex items-center ${ignoreMouse ? 'pointer-events-none' : ''}`}
       >
-        <Select
-          value={selectedKnowledgeValue}
-          onValueChange={requestProfileChange}
-        >
+        <Select value={selectedKnowledgeValue} onValueChange={requestProfileChange}>
           <SelectTrigger
             size="sm"
             className="mr-1 hidden h-7 w-40 border-white/15 bg-black/10 text-xs text-white shadow-none hover:bg-white/10 md:flex [&_svg]:text-white/60"
@@ -147,9 +144,7 @@ export function AppHeader() {
             <SelectValue placeholder="未启用岗位" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={BUILTIN_FRONTEND_KNOWLEDGE_PROFILE_ID}>
-              前端通用知识
-            </SelectItem>
+            <SelectItem value={BUILTIN_FRONTEND_KNOWLEDGE_PROFILE_ID}>前端通用知识</SelectItem>
             <SelectItem value={NO_PROFILE_VALUE}>不使用知识库</SelectItem>
             {snapshot.profiles.map((profile) => (
               <SelectItem key={profile.id} value={profile.id}>

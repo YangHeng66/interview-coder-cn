@@ -106,7 +106,7 @@ describe('knowledge retrieval', () => {
       },
       {
         documentId: 'assistant',
-        documentName: '截屏解题助手.md',
+        documentName: '桌面多模态 AI 助手.md',
         priority: 'key',
         chunks: voiceChunks
       }

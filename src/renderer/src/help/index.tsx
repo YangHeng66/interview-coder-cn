@@ -36,7 +36,7 @@ export default function HelpPage() {
         {/* Introduction */}
         <HelpSection Icon={Info} title="简介">
           <p className="text-gray-700">
-            欢迎使用截屏解题助手！无论是 编程面试 / 在线考试 还是其他解题场景，
+            欢迎使用桌面多模态 AI 助手！无论是屏幕内容分析、文字对话还是实时语音场景，
             该工具都可以帮助您快速截图，分析屏幕内容，并给出解答建议。您可以访问本项目{' '}
             <a
               href="https://github.com/YangHeng66/interview-coder-cn#readme"
