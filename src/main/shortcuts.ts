@@ -111,6 +111,9 @@ interface StreamContext {
   controller: AbortController
   reason: AbortReason | null
   kind: 'vision' | 'chat'
+  requestId?: string
+  assistantMessageId?: string
+  stopNotified?: boolean
 }
 
 let currentStreamContext: StreamContext | null = null
@@ -129,6 +132,11 @@ let autoReplyNotice: string | null = null
 function clearAutoReplyQueue(): void {
   autoReplyQueue.clear()
   autoReplyNotice = null
+  sendChatEvent({ type: 'auto-reply-queue', count: 0 })
+}
+
+function publishAutoReplyQueueState(): void {
+  sendChatEvent({ type: 'auto-reply-queue', count: autoReplyQueue.pendingCount })
 }
 
 function notifyVisionStreamFinished(streamContext: StreamContext): void {
@@ -303,6 +311,24 @@ function abortCurrentStream(reason: AbortReason) {
   if (!currentStreamContext) return
   currentStreamContext.reason = reason
   currentStreamContext.controller.abort()
+}
+
+function interruptChatStream(drainQueue = true): void {
+  const streamContext = currentStreamContext
+  if (!streamContext || streamContext.kind !== 'chat') return
+
+  abortCurrentStream('user')
+  if (!streamContext.stopNotified && streamContext.requestId && streamContext.assistantMessageId) {
+    streamContext.stopNotified = true
+    sendChatEvent({
+      type: 'assistant-stopped',
+      requestId: streamContext.requestId,
+      messageId: streamContext.assistantMessageId
+    })
+  }
+
+  currentStreamContext = null
+  if (drainQueue) drainAutoReplyQueue()
 }
 
 function releaseStream(streamContext: StreamContext): void {
@@ -504,6 +530,16 @@ function handleTranscriptionEvent(event: TranscriptionEvent): void {
   if (consumedText) {
     autoReplyNotice = null
     autoReplyQueue.add(consumedText)
+
+    // Voice questions should be able to take over an ongoing chat response.
+    // Use the same user-stop path so the interrupted assistant message is
+    // closed in the renderer before the queued question starts.
+    const shouldInterrupt = currentStreamContext?.kind === 'chat'
+    if (shouldInterrupt) {
+      interruptChatStream(false)
+      autoReplyQueue.flush()
+    }
+    publishAutoReplyQueueState()
   }
 }
 
@@ -529,6 +565,7 @@ function drainAutoReplyQueue(): void {
   }
 
   autoReplyQueue.removeFirst()
+  publishAutoReplyQueueState()
   acceptChatRequest(text, 'transcription')
 }
 
@@ -575,7 +612,11 @@ async function runChatRequest(
   }
 
   if (streamContext.controller.signal.aborted) {
-    if (streamContext.reason !== 'clear-chat' && streamContext.reason !== 'profile-switch') {
+    if (
+      !streamContext.stopNotified &&
+      streamContext.reason !== 'clear-chat' &&
+      streamContext.reason !== 'profile-switch'
+    ) {
       sendChatEvent({
         type: 'assistant-stopped',
         requestId,
@@ -628,7 +669,9 @@ function acceptChatRequest(
   const streamContext: StreamContext = {
     controller: new AbortController(),
     reason: null,
-    kind: 'chat'
+    kind: 'chat',
+    requestId,
+    assistantMessageId
   }
 
   currentStreamContext = streamContext
@@ -657,19 +700,29 @@ function submitChatMessage(
   const text = rawText.trim()
   const normalizedDocuments = normalizeChatDocuments(rawDocuments)
   if (typeof normalizedDocuments === 'string') return rejectChatRequest(normalizedDocuments)
-  const validationError = validateChatRequest(text, normalizedDocuments)
+  const validationError = validateChatRequest(
+    text,
+    normalizedDocuments,
+    currentStreamContext?.kind === 'chat'
+  )
   if (validationError) return rejectChatRequest(validationError)
+  interruptChatStream(false)
   return acceptChatRequest(text, source, normalizedDocuments)
 }
 
 function submitTranscriptionToChat(): ChatRequestResult {
   setAssistantMode('chat')
   const pendingText = getTranscriptionText().trim()
-  const validationError = validateChatRequest(pendingText)
+  const validationError = validateChatRequest(
+    pendingText,
+    [],
+    currentStreamContext?.kind === 'chat'
+  )
   if (validationError) return rejectChatRequest(validationError)
 
   const consumedText = consumeTranscriptionText().trim()
   if (!consumedText) return rejectChatRequest('没有可发送的语音转录内容')
+  interruptChatStream(false)
   return acceptChatRequest(consumedText, 'transcription')
 }
 
@@ -988,7 +1041,11 @@ const callbacks: Record<string, () => void> = {
 
   // Stop current AI solution stream
   stopSolutionStream: () => {
-    abortCurrentStream('user')
+    if (currentStreamContext?.kind === 'chat') {
+      interruptChatStream()
+    } else {
+      abortCurrentStream('user')
+    }
   },
 
   ignoreOrEnableMouse: () => {
@@ -1162,7 +1219,11 @@ ipcMain.handle('updateShortcuts', (_event, _shortcuts: { action: string; key: st
 
 ipcMain.handle('stopSolutionStream', () => {
   if (!currentStreamContext) return false
-  abortCurrentStream('user')
+  if (currentStreamContext.kind === 'chat') {
+    interruptChatStream()
+  } else {
+    abortCurrentStream('user')
+  }
   return true
 })
 
@@ -1182,6 +1243,11 @@ ipcMain.handle('sendChatMessage', (_event, text: string, documents?: ChatDocumen
 
 ipcMain.handle('sendTranscriptionToChat', () => {
   return submitTranscriptionToChat()
+})
+
+ipcMain.handle('clearAutoReplyQueue', () => {
+  clearAutoReplyQueue()
+  return true
 })
 
 ipcMain.handle('clearChatConversation', () => {

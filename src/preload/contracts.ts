@@ -347,6 +347,10 @@ export type ChatEvent =
   | {
       type: 'conversation-cleared'
     }
+  | {
+      type: 'auto-reply-queue'
+      count: number
+    }
 
 export type ChatRequestResult =
   | { accepted: true; requestId: string }

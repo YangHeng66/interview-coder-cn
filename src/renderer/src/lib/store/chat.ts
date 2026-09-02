@@ -23,6 +23,7 @@ interface ChatState {
   isLoading: boolean
   activeRequestId: string | null
   errorMessage: string | null
+  autoReplyQueueCount: number
 }
 
 interface ChatStore extends ChatState {
@@ -34,7 +35,8 @@ const defaultState: ChatState = {
   messages: [],
   isLoading: false,
   activeRequestId: null,
-  errorMessage: null
+  errorMessage: null,
+  autoReplyQueueCount: 0
 }
 
 export const useChatStore = create<ChatStore>()((set) => ({
@@ -77,7 +79,7 @@ export const useChatStore = create<ChatStore>()((set) => ({
       case 'assistant-delta':
         set((state) => ({
           messages: state.messages.map((message) =>
-            message.id === event.messageId
+            message.id === event.messageId && message.status === 'streaming'
               ? { ...message, content: message.content + event.delta }
               : message
           )
@@ -88,8 +90,9 @@ export const useChatStore = create<ChatStore>()((set) => ({
           messages: state.messages.map((message) =>
             message.id === event.messageId ? { ...message, status: 'complete' } : message
           ),
-          isLoading: false,
-          activeRequestId: null
+          isLoading: state.activeRequestId === event.requestId ? false : state.isLoading,
+          activeRequestId:
+            state.activeRequestId === event.requestId ? null : state.activeRequestId
         }))
         break
       case 'assistant-stopped':
@@ -97,8 +100,9 @@ export const useChatStore = create<ChatStore>()((set) => ({
           messages: state.messages.map((message) =>
             message.id === event.messageId ? { ...message, status: 'stopped' } : message
           ),
-          isLoading: false,
-          activeRequestId: null
+          isLoading: state.activeRequestId === event.requestId ? false : state.isLoading,
+          activeRequestId:
+            state.activeRequestId === event.requestId ? null : state.activeRequestId
         }))
         break
       case 'assistant-error':
@@ -108,12 +112,16 @@ export const useChatStore = create<ChatStore>()((set) => ({
               ? { ...message, status: 'error', error: event.error }
               : message
           ),
-          isLoading: false,
-          activeRequestId: null
+          isLoading: state.activeRequestId === event.requestId ? false : state.isLoading,
+          activeRequestId:
+            state.activeRequestId === event.requestId ? null : state.activeRequestId
         }))
         break
       case 'request-error':
         set({ errorMessage: event.error })
+        break
+      case 'auto-reply-queue':
+        set({ autoReplyQueueCount: event.count })
         break
       case 'conversation-cleared':
         set(defaultState)

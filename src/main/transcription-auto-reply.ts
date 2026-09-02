@@ -67,6 +67,10 @@ export class TranscriptionAutoReplyQueue {
     return Boolean(this.pendingText || this.batches.length)
   }
 
+  get pendingCount(): number {
+    return this.batches.length + (this.pendingText ? 1 : 0)
+  }
+
   private scheduleFlush(): void {
     this.clearTimer()
     this.mergeTimer = setTimeout(() => {

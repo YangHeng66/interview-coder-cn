@@ -3,6 +3,7 @@ import {
   AudioLines,
   Bot,
   FileText,
+  ListX,
   Mic,
   MicOff,
   OctagonX,
@@ -245,6 +246,7 @@ function ChatComposer({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { isTranscribing, transcriptionText } = useTranscriptionStore()
   const transcriptionAutoReply = useSettingsStore((state) => state.transcriptionAutoReply)
+  const autoReplyQueueCount = useChatStore((state) => state.autoReplyQueueCount)
   const transcriptionConfigError = useSettingsStore((state) =>
     getTranscriptionConfigError(createTranscriptionConfig(state))
   )
@@ -252,7 +254,7 @@ function ChatComposer({
 
   const sendDraft = async () => {
     const text = draft.trim()
-    if ((!text && documents.length === 0) || isLoading) return
+    if (!text && documents.length === 0) return
     const result = await window.api.sendChatMessage(text, documents)
     if (result.accepted) {
       setDraft('')
@@ -353,8 +355,15 @@ function ChatComposer({
                 isTranscribing ? 'text-green-300' : isPaused ? 'text-amber-300' : 'text-gray-300'
               }`}
             />
-            <div className="max-h-[4.2em] min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-[1.4em] text-gray-100/85">
-              {transcriptionText || (isPaused ? '语音识别已暂停' : '等待语音输入...')}
+            <div className="min-w-0 flex-1">
+              <div className="mb-0.5 flex items-center gap-2 text-[11px] text-gray-300/65">
+                <span>{isTranscribing ? '监听中' : isPaused ? '已暂停' : '待发送'}</span>
+                {transcriptionAutoReply && <span className="text-green-200/75">自动回答</span>}
+                {isLoading && <span className="text-blue-200/75">回答生成中</span>}
+              </div>
+              <div className="max-h-[4.2em] overflow-y-auto whitespace-pre-wrap break-words text-sm leading-[1.4em] text-gray-100/85">
+                {transcriptionText || (isPaused ? '语音识别已暂停' : '等待语音输入...')}
+              </div>
             </div>
             {isTranscribing && (
               <Button
@@ -389,6 +398,23 @@ function ChatComposer({
               aria-label="清除语音转录"
             >
               <Trash2 className="size-3.5" />
+            </Button>
+          </div>
+        )}
+
+        {transcriptionAutoReply && autoReplyQueueCount > 0 && (
+          <div className="mb-2 flex min-h-8 items-center gap-2 border-b border-white/10 pb-2 text-xs text-gray-200/75">
+            <span className="min-w-0 flex-1">待处理语音 {autoReplyQueueCount} 句</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 text-gray-300 hover:bg-white/10 hover:text-white"
+              onClick={() => void window.api.clearAutoReplyQueue()}
+              aria-label="清空待处理语音"
+              title="清空待处理语音"
+            >
+              <ListX className="size-3.5" />
             </Button>
           </div>
         )}
@@ -447,7 +473,7 @@ function ChatComposer({
             aria-label="对话输入"
           />
 
-          {isLoading ? (
+          {isLoading && (
             <Button
               type="button"
               variant="ghost"
@@ -458,19 +484,19 @@ function ChatComposer({
             >
               <OctagonX className="size-4" />
             </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 shrink-0 bg-white/15 text-white hover:bg-white/25 hover:text-white"
-              disabled={!draft.trim() && documents.length === 0}
-              onClick={() => void sendDraft()}
-              aria-label="发送消息"
-            >
-              <Send className="size-4" />
-            </Button>
           )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0 bg-white/15 text-white hover:bg-white/25 hover:text-white"
+            disabled={!draft.trim() && documents.length === 0}
+            onClick={() => void sendDraft()}
+            aria-label="发送消息"
+          >
+            <Send className="size-4" />
+          </Button>
 
           <Button
             type="button"

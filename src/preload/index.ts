@@ -122,6 +122,7 @@ const api = {
     ipcRenderer.invoke('sendChatMessage', text, documents) as Promise<ChatRequestResult>,
   sendTranscriptionToChat: () =>
     ipcRenderer.invoke('sendTranscriptionToChat') as Promise<ChatRequestResult>,
+  clearAutoReplyQueue: () => ipcRenderer.invoke('clearAutoReplyQueue') as Promise<boolean>,
   clearChatConversation: () => ipcRenderer.invoke('clearChatConversation') as Promise<boolean>,
   onChatEvent: (callback: (event: ChatEvent) => void) => {
     ipcRenderer.on('chat-event', (_event, event) => callback(event))
