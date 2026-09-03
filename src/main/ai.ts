@@ -86,6 +86,16 @@ function supportsThinkingSwitch(apiBaseURL: string): boolean {
   return /(?:^|\/\/)(?:ark\.[^/]+\.volces\.com|api\.deepseek\.com)(?:\/|$)/i.test(apiBaseURL.trim())
 }
 
+function isDeepSeekApi(apiBaseURL: string): boolean {
+  return /(?:^|\/\/)api\.deepseek\.com(?:\/|$)/i.test(apiBaseURL.trim())
+}
+
+function getDeepSeekReasoningEffort(level: ThinkingLevel): 'low' | 'high' | undefined {
+  if (level === 'minimal' || level === 'low') return 'low'
+  if (level === 'medium' || level === 'high') return 'high'
+  return undefined
+}
+
 function createProviderFetch(connection: ConnectionSettings): typeof globalThis.fetch {
   return async (input, init) => {
     let requestInit = init
@@ -95,6 +105,12 @@ function createProviderFetch(connection: ConnectionSettings): typeof globalThis.
         const body = JSON.parse(init.body) as Record<string, unknown>
         if (connection.enableThinkingSwitch && body.thinking == null) {
           body.thinking = { type: connection.thinkingLevel === 'none' ? 'disabled' : 'enabled' }
+        }
+        if (isDeepSeekApi(connection.apiBaseURL) && connection.apiProtocol === 'chat-completions') {
+          if (connection.thinkingLevel !== 'none' && body.reasoning_effort == null) {
+            const effort = getDeepSeekReasoningEffort(connection.thinkingLevel)
+            if (effort) body.reasoning_effort = effort
+          }
         } else if (connection.apiProtocol === 'responses' && body.reasoning == null) {
           body.reasoning = { effort: connection.thinkingLevel }
         } else if (connection.apiProtocol === 'chat-completions' && body.reasoning_effort == null) {

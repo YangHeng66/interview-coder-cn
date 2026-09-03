@@ -401,6 +401,11 @@ async function retrieveKnowledgeContext(
   abortSignal?: AbortSignal
 ): Promise<KnowledgeRetrieval | null> {
   try {
+    const knowledgeSnapshot = await knowledgeService.getSnapshot()
+    if (!knowledgeSnapshot.activeProfileId && !knowledgeSnapshot.builtinFrontendKnowledgeEnabled) {
+      return null
+    }
+
     let semanticQuery = ''
     if (query.trim()) {
       try {

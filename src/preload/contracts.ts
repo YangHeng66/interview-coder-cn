@@ -13,12 +13,26 @@ const DEFAULT_MODEL_THINKING_LEVELS: readonly ThinkingLevel[] = [
 ]
 const GPT_56_THINKING_LEVELS: readonly ThinkingLevel[] = ['auto', 'none', 'low', 'medium', 'high']
 
+const DEEPSEEK_THINKING_LEVELS: readonly ThinkingLevel[] = [
+  'auto',
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high'
+]
+
 function isGpt56Model(model: string): boolean {
   return /^gpt-5\.6(?:$|-)/i.test(model.trim())
 }
 
+function isDeepSeekModel(model: string): boolean {
+  return /^deepseek-/i.test(model.trim())
+}
+
 export function getThinkingLevelsForModel(model: string): readonly ThinkingLevel[] {
-  return isGpt56Model(model) ? GPT_56_THINKING_LEVELS : DEFAULT_MODEL_THINKING_LEVELS
+  if (isGpt56Model(model)) return GPT_56_THINKING_LEVELS
+  return isDeepSeekModel(model) ? DEEPSEEK_THINKING_LEVELS : DEFAULT_MODEL_THINKING_LEVELS
 }
 
 export function normalizeThinkingLevelForModel(model: string, level: ThinkingLevel): ThinkingLevel {
