@@ -65,6 +65,7 @@ import {
 export default function SettingsPage() {
   const {
     opacity,
+    contentProtectionEnabled,
     showOverlayToolbar,
     toolbarHoverDelay,
     apiProtocol,
@@ -1010,6 +1011,19 @@ export default function SettingsPage() {
               用户知识库原件与索引保存在本机；启用知识库后，仅将本次命中的参考片段随问题发送给 AI
               服务，内置前端资料包不会写入用户文档目录。
             </p>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                隐身模式
+                <span className="ml-2 text-xs font-light">
+                  开启后，录屏或会议软件捕获到的窗口内容为空白
+                </span>
+              </label>
+              <Switch
+                className="scale-y-90"
+                checked={contentProtectionEnabled}
+                onCheckedChange={(checked) => updateSetting('contentProtectionEnabled', checked)}
+              />
+            </div>
             {isMac && (
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">

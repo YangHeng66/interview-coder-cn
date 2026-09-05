@@ -3,12 +3,7 @@ import { shell, BrowserWindow } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createToolbarWindow } from './toolbar-window'
-
-export function applyContentProtection(window: BrowserWindow): void {
-  if (!window || window.isDestroyed()) return
-
-  window.setContentProtection(true)
-}
+import { applyContentProtection } from './content-protection'
 
 export function createWindow(): void {
   // Create the browser window.

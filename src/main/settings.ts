@@ -1,6 +1,11 @@
 import { app, ipcMain } from 'electron'
 import appConfig from '../../app.config.json'
-import { setToolbarOpacity, syncToolbarSettings } from './toolbar-window'
+import {
+  setToolbarContentProtection,
+  setToolbarOpacity,
+  syncToolbarSettings
+} from './toolbar-window'
+import { setContentProtectionEnabled } from './content-protection'
 import {
   DEEPSEEK_API_BASE_URL,
   DEEPSEEK_DEFAULT_MODEL,
@@ -38,6 +43,10 @@ ipcMain.handle('updateAppSettings', (_event, _settings) => {
   if ('opacity' in _settings) {
     setToolbarOpacity(settings.opacity)
   }
+  if ('contentProtectionEnabled' in _settings) {
+    setContentProtectionEnabled(settings.contentProtectionEnabled)
+    setToolbarContentProtection(settings.contentProtectionEnabled)
+  }
   if ('toolbarHoverDelay' in _settings) {
     syncToolbarSettings(settings.toolbarHoverDelay)
   }
@@ -74,6 +83,7 @@ export const settings = {
   chatSystemPrompt: DEFAULT_CHAT_SYSTEM_PROMPT,
   /** Kept in sync with the renderer so the overlay toolbar can match the main window */
   opacity: 0.8,
+  contentProtectionEnabled: true,
   /**
    * Dwell time in ms before hovering a toolbar button fires it; 0 disables hover
    * triggering. The real default lives in the renderer store: App.tsx fills blank

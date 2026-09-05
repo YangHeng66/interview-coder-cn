@@ -120,6 +120,11 @@ export function setToolbarOpacity(opacity: number): void {
   toolbarWindow.setOpacity(opacity)
 }
 
+export function setToolbarContentProtection(enabled: boolean): void {
+  if (!toolbarWindow || toolbarWindow.isDestroyed()) return
+  toolbarWindow.setContentProtection(enabled)
+}
+
 /**
  * The toolbar lives in its own renderer, so it never sees the settings store
  * updates made in the main window; push the ones it needs over IPC instead.

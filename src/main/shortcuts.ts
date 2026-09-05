@@ -22,7 +22,7 @@ import {
   newConversation
 } from './conversations'
 import type { ShortcutRegistration } from '../preload/contracts'
-import { applyContentProtection } from './main-window'
+import { applyContentProtection } from './content-protection'
 import {
   showToolbar,
   hideToolbar,

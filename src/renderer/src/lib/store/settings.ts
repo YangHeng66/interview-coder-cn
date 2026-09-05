@@ -143,6 +143,8 @@ export interface Settings {
   activeSceneId: string
 
   opacity: number
+  /** Hide the app from captured window pixels when enabled */
+  contentProtectionEnabled: boolean
   /** Show the click-through overlay toolbar above the main window */
   showOverlayToolbar: boolean
   /** Dwell time in ms before hovering a toolbar button fires it; 0 disables hover triggering */
@@ -208,6 +210,7 @@ const defaultSettings: Settings = {
   activeSceneId: CODING_SCENE_ID,
 
   opacity: 0.8,
+  contentProtectionEnabled: true,
   showOverlayToolbar: true,
   toolbarHoverDelay: 1000,
 
