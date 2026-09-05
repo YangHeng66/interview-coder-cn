@@ -1,4 +1,7 @@
 import { useSettingsStore } from '@/lib/store/settings'
+import { useTranscriptionStore } from '@/lib/store/transcription'
+import appConfig from '../../../../app.config.json'
+import workletSource from './pcm-worklet.js?raw'
 
 export type AudioCaptureSource = 'system' | 'microphone'
 
@@ -9,18 +12,11 @@ export type AudioCaptureResult = {
 
 let mediaStreams: MediaStream[] = []
 let audioContext: AudioContext | null = null
-let processor: ScriptProcessorNode | null = null
+let processor: AudioWorkletNode | null = null
 let mixer: GainNode | null = null
 let sourceNodes: MediaStreamAudioSourceNode[] = []
-
-function downsampleAndSend(float32: Float32Array): void {
-  const int16 = new Int16Array(float32.length)
-  for (let i = 0; i < float32.length; i++) {
-    const s = Math.max(-1, Math.min(1, float32[i]))
-    int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff
-  }
-  window.api.sendTranscriptionAudioChunk(int16.buffer)
-}
+let generation = 0
+let acknowledgeFlush: (() => void) | null = null
 
 async function openMicrophoneStream(deviceId: string): Promise<MediaStream> {
   const audio: MediaTrackConstraints = {
@@ -105,8 +101,9 @@ async function openRequestedStreams(
   return { streams, warnings }
 }
 
-export async function startAudioCapture(): Promise<AudioCaptureResult> {
-  stopAudioCapture()
+export async function startAudioCapture(sessionId: string): Promise<AudioCaptureResult> {
+  await stopAudioCapture()
+  const captureGeneration = generation
 
   const { audioInputDeviceId, audioOutputDeviceId, transcriptionAudioSource } =
     useSettingsStore.getState()
@@ -114,15 +111,21 @@ export async function startAudioCapture(): Promise<AudioCaptureResult> {
     transcriptionAudioSource === 'microphone' || transcriptionAudioSource === 'mixed'
       ? transcriptionAudioSource
       : 'system'
-  const { streams, warnings } = await openRequestedStreams(
-    source,
-    audioInputDeviceId
-  )
+  const { streams, warnings } = await openRequestedStreams(source, audioInputDeviceId)
+
+  if (generation !== captureGeneration) {
+    streams.forEach(({ stream }) => stream.getTracks().forEach((track) => track.stop()))
+    throw new DOMException('音频采集已取消', 'AbortError')
+  }
 
   mediaStreams = streams.map(({ stream }) => stream)
 
   try {
-    audioContext = new AudioContext({ sampleRate: 16000, latencyHint: 'interactive' })
+    const context = new AudioContext({
+      sampleRate: appConfig.transcription.sampleRate,
+      latencyHint: 'interactive'
+    })
+    audioContext = context
 
     if (audioOutputDeviceId && 'setSinkId' in audioContext) {
       try {
@@ -134,7 +137,14 @@ export async function startAudioCapture(): Promise<AudioCaptureResult> {
       }
     }
 
-    mixer = audioContext.createGain()
+    const workletUrl = URL.createObjectURL(new Blob([workletSource], { type: 'text/javascript' }))
+    try {
+      await context.audioWorklet.addModule(workletUrl)
+    } finally {
+      URL.revokeObjectURL(workletUrl)
+    }
+    if (generation !== captureGeneration) throw new DOMException('音频采集已取消', 'AbortError')
+    mixer = context.createGain()
     mixer.channelCount = 1
     mixer.channelCountMode = 'explicit'
     mixer.gain.value = mediaStreams.length > 1 ? 0.5 : 1
@@ -148,18 +158,34 @@ export async function startAudioCapture(): Promise<AudioCaptureResult> {
       return sourceNode
     })
 
-    processor = audioContext.createScriptProcessor(2048, 1, 1)
-    processor.onaudioprocess = (event) => {
-      downsampleAndSend(event.inputBuffer.getChannelData(0))
-      event.outputBuffer.getChannelData(0).fill(0)
+    processor = new AudioWorkletNode(context, 'pcm-capture', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [1],
+      processorOptions: {
+        frameSamples: Math.round(
+          (context.sampleRate * appConfig.transcription.frameDurationMs) / 1000
+        )
+      }
+    })
+    processor.port.onmessage = ({ data }) => {
+      if (data.type === 'flushed') {
+        acknowledgeFlush?.()
+        return
+      }
+      window.api.sendTranscriptionAudioChunk(sessionId, data.pcm)
+      const floor = appConfig.transcription.meterFloorDb
+      const db = data.rms > 0 ? 20 * Math.log10(data.rms) : floor
+      useTranscriptionStore
+        .getState()
+        .setAudioLevel(Math.max(0, Math.min(1, (db - floor) / -floor)))
     }
     mixer.connect(processor)
-    // ScriptProcessorNode must be connected to run in Chromium. The output is
-    // explicitly muted above, so captured audio is never played back locally.
-    processor.connect(audioContext.destination)
-    await audioContext.resume()
+    // The worklet leaves its output silent; captured audio is never played locally.
+    processor.connect(context.destination)
+    await context.resume()
   } catch (error) {
-    stopAudioCapture()
+    if (generation === captureGeneration) await stopAudioCapture()
     throw error
   }
 
@@ -169,22 +195,29 @@ export async function startAudioCapture(): Promise<AudioCaptureResult> {
   }
 }
 
-export function stopAudioCapture(): void {
-  if (processor) {
-    processor.disconnect()
-    processor.onaudioprocess = null
-    processor = null
-  }
+export async function stopAudioCapture(): Promise<void> {
+  generation++
+  const closingProcessor = processor
+  const closingContext = audioContext
+  processor = null
+  audioContext = null
   sourceNodes.forEach((sourceNode) => sourceNode.disconnect())
   sourceNodes = []
   if (mixer) {
     mixer.disconnect()
     mixer = null
   }
-  if (audioContext) {
-    void audioContext.close()
-    audioContext = null
-  }
   mediaStreams.forEach((stream) => stream.getTracks().forEach((track) => track.stop()))
   mediaStreams = []
+  if (closingProcessor && closingContext?.state === 'running') {
+    await new Promise<void>((resolve) => {
+      acknowledgeFlush = resolve
+      closingProcessor.port.postMessage('flush')
+    })
+    acknowledgeFlush = null
+  }
+  closingProcessor?.disconnect()
+  closingProcessor?.port.close()
+  if (closingContext && closingContext.state !== 'closed') await closingContext.close()
+  useTranscriptionStore.getState().setAudioLevel(0)
 }

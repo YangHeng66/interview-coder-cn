@@ -45,6 +45,6 @@ export const TOOLBAR_ACTIONS: ToolbarAction[] = [
   { action: 'moveMainWindowRight', Icon: ArrowRight, label: '向右移动窗口' },
   { action: 'increaseOpacity', Icon: Sun, label: '提高不透明度（更清晰）' },
   { action: 'decreaseOpacity', Icon: SunDim, label: '提高透明度（更透明）' },
-  { action: 'toggleTranscription', Icon: Mic, label: '开始/暂停语音转录' },
+  { action: 'toggleTranscription', Icon: Mic, label: '开始/停止语音转录' },
   { action: 'sendTranscriptionToChat', Icon: Send, label: '手动发送语音到文字对话' }
 ]

@@ -1,6 +1,8 @@
-export const AUTO_REPLY_MERGE_DELAY_MS = 800
-export const AUTO_REPLY_MAX_BATCHES = 10
-export const AUTO_REPLY_MAX_CHARACTERS = 20_000
+import appConfig from '../../app.config.json'
+
+export const AUTO_REPLY_MERGE_DELAY_MS = appConfig.transcription.autoReplyMergeMs
+export const AUTO_REPLY_MAX_BATCHES = appConfig.transcription.autoReplyMaxBatches
+export const AUTO_REPLY_MAX_CHARACTERS = appConfig.transcription.autoReplyMaxCharacters
 
 type Timer = ReturnType<typeof setTimeout>
 

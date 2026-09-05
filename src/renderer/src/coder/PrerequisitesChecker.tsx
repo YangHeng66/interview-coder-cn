@@ -1,11 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { Camera, Eye, EyeOff, MessageCircle } from 'lucide-react'
-import {
-  type ApiProtocol,
-  type ChatProvider,
-  useSettingsStore
-} from '@/lib/store/settings'
+import { type ApiProtocol, type ChatProvider, useSettingsStore } from '@/lib/store/settings'
 import { useAppStore } from '@/lib/store/app'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,17 +28,13 @@ export function PrerequisitesChecker() {
   const [inputApiProtocol, setInputApiProtocol] = useState<ApiProtocol>(settings.apiProtocol)
   const [inputApiKey, setInputApiKey] = useState(settings.apiKey)
   const [inputApiBaseURL, setInputApiBaseURL] = useState(settings.apiBaseURL)
-  const [inputChatProvider, setInputChatProvider] = useState<ChatProvider>(
-    settings.chatProvider
-  )
+  const [inputChatProvider, setInputChatProvider] = useState<ChatProvider>(settings.chatProvider)
   const [inputChatApiProtocol, setInputChatApiProtocol] = useState<ApiProtocol>(
     settings.chatApiProtocol
   )
   const [inputChatApiBaseURL, setInputChatApiBaseURL] = useState(settings.chatApiBaseURL)
   const [inputChatApiKey, setInputChatApiKey] = useState(settings.chatApiKey)
-  const [inputChatModel, setInputChatModel] = useState(
-    settings.chatModel || DEEPSEEK_DEFAULT_MODEL
-  )
+  const [inputChatModel, setInputChatModel] = useState(settings.chatModel || DEEPSEEK_DEFAULT_MODEL)
   const [showApiKey, setShowApiKey] = useState(false)
 
   const hasScreenshotConfiguration = Boolean(settings.apiKey.trim())
@@ -65,9 +57,7 @@ export function PrerequisitesChecker() {
     )
     settings.updateSetting(
       'chatApiBaseURL',
-      inputChatProvider === 'deepseek'
-        ? DEEPSEEK_API_BASE_URL
-        : inputChatApiBaseURL.trim()
+      inputChatProvider === 'deepseek' ? DEEPSEEK_API_BASE_URL : inputChatApiBaseURL.trim()
     )
     settings.updateSetting('chatApiKey', inputChatApiKey.trim())
     settings.updateSetting('chatModel', inputChatModel.trim() || DEEPSEEK_DEFAULT_MODEL)
@@ -86,7 +76,7 @@ export function PrerequisitesChecker() {
 
   return (
     <div className="fixed top-9 left-0 right-0 bottom-0 z-50 flex bg-black/50 p-4">
-      <div className="m-auto w-full max-w-md rounded-lg bg-white p-5 shadow-lg">
+      <div className="m-auto max-h-full w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 text-neutral-900 shadow-lg">
         <h1 className="mb-4 text-center text-xl font-bold">配置 AI 模型</h1>
 
         <div className="mb-4 grid grid-cols-2 rounded-md bg-gray-100 p-1">
@@ -125,6 +115,7 @@ export function PrerequisitesChecker() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="chat-completions">Chat Completions</SelectItem>
+                    <SelectItem value="messages">Messages</SelectItem>
                     <SelectItem value="responses">Responses（Codex）</SelectItem>
                   </SelectContent>
                 </Select>
@@ -179,6 +170,7 @@ export function PrerequisitesChecker() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="chat-completions">Chat Completions</SelectItem>
+                        <SelectItem value="messages">Messages</SelectItem>
                         <SelectItem value="responses">Responses（Codex）</SelectItem>
                       </SelectContent>
                     </Select>

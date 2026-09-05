@@ -22,6 +22,7 @@ import { useChatStore } from '@/lib/store/chat'
 import { useKnowledgeStore } from '@/lib/store/knowledge'
 import { useSolutionStore } from '@/lib/store/solution'
 import { hasBuiltinKnowledgeApi } from '@/lib/utils'
+import appIcon from '@/assets/app-icon.svg'
 import {
   BUILTIN_FRONTEND_KNOWLEDGE_PROFILE_ID,
   type AssistantMode
@@ -99,10 +100,17 @@ export function AppHeader() {
       : NO_PROFILE_VALUE)
 
   return (
-    <div id="app-header" className="relative flex items-center px-2 text-white">
-      <div className="hidden text-xs font-medium text-white/70 sm:block">桌面多模态 AI 助手</div>
+    <div id="app-header" className="coder-header relative flex items-center px-2 text-white">
+      <div className="app-brand flex items-center gap-2 text-xs font-medium text-white/80">
+        <img
+          src={appIcon}
+          alt=""
+          className="size-6 rounded-[7px] shadow-[0_0_16px_rgba(86,220,239,0.2)]"
+        />
+        <span>桌面多模态 AI 助手</span>
+      </div>
 
-      <div className="actions absolute left-1/2 top-1/2 flex h-7 -translate-x-1/2 -translate-y-1/2 rounded-md bg-black/20 p-0.5">
+      <div className="actions mode-control flex h-7 shrink-0 rounded-md bg-black/20 p-0.5">
         <button
           type="button"
           aria-pressed={assistantMode === 'screenshot'}

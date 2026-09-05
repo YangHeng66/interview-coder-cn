@@ -12,7 +12,9 @@ const thinkingLevelLabels: Record<ThinkingLevel, string> = {
   minimal: '最小',
   low: '低',
   medium: '中',
-  high: '高'
+  high: '高',
+  xhigh: '超高',
+  max: '最高'
 }
 
 export function ThinkingEffortSlider({

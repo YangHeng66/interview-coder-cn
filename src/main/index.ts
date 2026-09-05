@@ -30,14 +30,19 @@ import { electronApp, optimizer } from '@electron-toolkit/utils'
 import './shortcuts'
 import './transcription'
 import './knowledge/ipc'
+import './local-files'
 import { createWindow } from './main-window'
 import { initAutoUpdater } from './auto-updater'
 import { applyDockVisibility } from './settings'
+import { initializeConversations, flushConversations } from './conversations'
+import { restoreConversationModels } from './shortcuts'
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await initializeConversations()
+  restoreConversationModels()
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -86,6 +91,16 @@ app.whenReady().then(() => {
     } else if (global.mainWindow && !global.mainWindow.isVisible()) {
       global.mainWindow.show()
     }
+  })
+})
+
+let conversationsFlushed = false
+app.on('before-quit', (event) => {
+  if (conversationsFlushed) return
+  event.preventDefault()
+  void flushConversations().finally(() => {
+    conversationsFlushed = true
+    app.quit()
   })
 })
 

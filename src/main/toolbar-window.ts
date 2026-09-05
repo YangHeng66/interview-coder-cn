@@ -23,6 +23,7 @@ export function createToolbarWindow(parent: BrowserWindow): void {
     width: TOOLBAR_WIDTH,
     height: TOOLBAR_HEIGHT,
     frame: false,
+    title: '',
     transparent: true,
     hasShadow: false,
     // Clicking a button must never pull focus away from what the user is doing
@@ -37,6 +38,10 @@ export function createToolbarWindow(parent: BrowserWindow): void {
     }
   })
   ownerWindow = parent
+  toolbarWindow.on('page-title-updated', (event) => {
+    event.preventDefault()
+    toolbarWindow?.setTitle('')
+  })
 
   toolbarWindow.setMenuBarVisibility(false)
   toolbarWindow.setOpacity(toolbarOpacity)

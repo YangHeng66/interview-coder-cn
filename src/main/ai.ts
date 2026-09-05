@@ -1,5 +1,7 @@
 import { generateText, streamText, type ModelMessage } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import { createAnthropic } from '@ai-sdk/anthropic'
+import appConfig from '../../app.config.json'
 import { settings, AppSettings } from './settings'
 import {
   DEEPSEEK_API_BASE_URL,
@@ -17,7 +19,7 @@ import {
 const KNOWLEDGE_QUERY_REWRITE_SYSTEM_PROMPT = `你是本地知识库的检索查询规划器。
 理解用户当前问题在最近对话中的真实意图，把口语、简称、代词和业务描述改写成知识库文档中可能出现的技术表达。
 不要回答问题，不要判断资料是否存在，不要编造事实。只输出两部分：一行完整的独立问题，以及一行空格分隔的相关技术关键词、组件名、协议名或中英文同义表达。总长度控制在 500 个中文字符以内。`
-const KNOWLEDGE_QUERY_REWRITE_TIMEOUT_MS = 8_000
+const KNOWLEDGE_QUERY_REWRITE_TIMEOUT_MS = appConfig.performance.knowledgeRewriteTimeoutMs
 
 // The system prompt is fully managed by the renderer (prompt scenes in the
 // settings store) and synced here via updateAppSettings on app startup
@@ -32,7 +34,7 @@ function getModel(_settings: AppSettings) {
   return _settings.model || fallbackModel
 }
 
-type ConnectionSettings = {
+export type ConnectionSettings = {
   apiProtocol: ApiProtocol
   apiBaseURL: string
   apiKey: string
@@ -41,9 +43,17 @@ type ConnectionSettings = {
   enableThinkingSwitch?: boolean
 }
 
-type ActiveThinkingLevel = Exclude<ThinkingLevel, 'auto'>
-
 type StreamKind = 'vision' | 'chat'
+
+function selectRequestHistory(messages: ModelMessage[]): ModelMessage[] {
+  const turns = settings.requestHistoryTurns
+  if (turns === 0) return messages
+  let remaining = turns
+  for (let index = messages.length - 1; index >= 0; index--) {
+    if (messages[index].role === 'user' && --remaining === 0) return messages.slice(index)
+  }
+  return messages
+}
 
 function createStreamTimingLogger(connection: ConnectionSettings, kind: StreamKind) {
   const startedAt = performance.now()
@@ -82,7 +92,7 @@ function getThinkingLevel(levels: Record<string, ThinkingLevel>, model: string):
   return normalizeThinkingLevelForModel(model, levels[model.trim()] ?? 'auto')
 }
 
-function supportsThinkingSwitch(apiBaseURL: string): boolean {
+export function supportsThinkingSwitch(apiBaseURL: string): boolean {
   return /(?:^|\/\/)(?:ark\.[^/]+\.volces\.com|api\.deepseek\.com)(?:\/|$)/i.test(apiBaseURL.trim())
 }
 
@@ -96,7 +106,10 @@ function getDeepSeekReasoningEffort(level: ThinkingLevel): 'low' | 'high' | unde
   return undefined
 }
 
-function createProviderFetch(connection: ConnectionSettings): typeof globalThis.fetch {
+function createProviderFetch(
+  connection: ConnectionSettings,
+  transport: typeof globalThis.fetch
+): typeof globalThis.fetch {
   return async (input, init) => {
     let requestInit = init
 
@@ -124,7 +137,7 @@ function createProviderFetch(connection: ConnectionSettings): typeof globalThis.
 
     const startedAt = performance.now()
     try {
-      const response = await globalThis.fetch(input, requestInit)
+      const response = await transport(input, requestInit)
       console.info(
         `[AI timing] responseHeaders=${Math.round(performance.now() - startedAt)}ms ` +
           `status=${response.status} model=${connection.model} protocol=${connection.apiProtocol} ` +
@@ -142,31 +155,45 @@ function createProviderFetch(connection: ConnectionSettings): typeof globalThis.
   }
 }
 
-function createLanguageModel(connection: ConnectionSettings) {
+export function createLanguageModel(
+  connection: ConnectionSettings,
+  transport: typeof globalThis.fetch = globalThis.fetch
+) {
+  if (connection.apiProtocol === 'messages') {
+    return createAnthropic({
+      baseURL: connection.apiBaseURL.trim().replace(/\/+$/, ''),
+      apiKey: connection.apiKey.trim(),
+      fetch: createProviderFetch(connection, transport)
+    })(connection.model)
+  }
   const openai = createOpenAI({
     baseURL: connection.apiBaseURL.trim() || undefined,
     apiKey: connection.apiKey.trim(),
-    fetch: createProviderFetch(connection)
+    fetch: createProviderFetch(connection, transport)
   })
   return connection.apiProtocol === 'responses'
     ? openai.responses(connection.model)
     : openai.chat(connection.model)
 }
 
-function getProviderOptions(connection: ConnectionSettings) {
-  if (
-    connection.thinkingLevel === 'auto' ||
-    connection.enableThinkingSwitch ||
-    (connection.apiProtocol === 'chat-completions' && connection.thinkingLevel === 'none')
-  ) {
-    return undefined
-  }
-
-  return {
-    openai: {
-      reasoningEffort: connection.thinkingLevel satisfies ActiveThinkingLevel
+export function getProviderOptions(
+  connection: ConnectionSettings
+): Parameters<typeof streamText>[0]['providerOptions'] {
+  if (connection.apiProtocol === 'messages') {
+    const level = connection.thinkingLevel
+    if (level === 'auto') return undefined
+    return {
+      anthropic: {
+        thinking:
+          level === 'none'
+            ? { type: 'disabled' as const }
+            : { type: 'enabled' as const, budgetTokens: appConfig.messagesThinkingBudgets[level] }
+      }
     }
   }
+  // OpenAI effort is applied to the wire payload in createProviderFetch so
+  // current model levels are not restricted by the installed SDK's enum.
+  return undefined
 }
 
 function getVisionConnection(): ConnectionSettings {
@@ -228,7 +255,7 @@ export async function rewriteKnowledgeQuery(
     model: createLanguageModel(connection),
     system: KNOWLEDGE_QUERY_REWRITE_SYSTEM_PROMPT,
     prompt: buildKnowledgeQueryRewritePrompt(question, recentConversation),
-    maxOutputTokens: 300,
+    maxOutputTokens: appConfig.performance.knowledgeRewriteMaxTokens,
     maxRetries: 1,
     providerOptions: getProviderOptions(connection),
     abortSignal: rewriteSignal
@@ -248,7 +275,9 @@ export function getSolutionStream(
   const { textStream } = streamText({
     model: createLanguageModel(connection),
     system: getSystemPrompt(knowledgeContext),
-    messages,
+    maxOutputTokens:
+      connection.apiProtocol === 'messages' ? appConfig.messagesMaxOutputTokens : undefined,
+    messages: selectRequestHistory(messages),
     providerOptions: getProviderOptions(connection),
     abortSignal,
     onChunk: ({ chunk }) => timing.markChunk(chunk.type),
@@ -289,7 +318,9 @@ export function getFollowUpStream(
   const { textStream } = streamText({
     model: createLanguageModel(connection),
     system: getSystemPrompt(knowledgeContext),
-    messages: updatedMessages,
+    messages: selectRequestHistory(updatedMessages),
+    maxOutputTokens:
+      connection.apiProtocol === 'messages' ? appConfig.messagesMaxOutputTokens : undefined,
     providerOptions: getProviderOptions(connection),
     abortSignal,
     onChunk: ({ chunk }) => timing.markChunk(chunk.type),
@@ -319,7 +350,9 @@ export function getGeneralStream(
         .filter(Boolean)
         .join('\n\n')
     ),
-    messages,
+    messages: selectRequestHistory(messages),
+    maxOutputTokens:
+      connection.apiProtocol === 'messages' ? appConfig.messagesMaxOutputTokens : undefined,
     providerOptions: getProviderOptions(connection),
     abortSignal,
     onChunk: ({ chunk }) => timing.markChunk(chunk.type),
@@ -346,7 +379,9 @@ export function getChatStream(
     system: [settings.chatSystemPrompt.trim() || DEFAULT_CHAT_SYSTEM_PROMPT, knowledgeContext]
       .filter(Boolean)
       .join('\n\n'),
-    messages,
+    messages: selectRequestHistory(messages),
+    maxOutputTokens:
+      connection.apiProtocol === 'messages' ? appConfig.messagesMaxOutputTokens : undefined,
     providerOptions: getProviderOptions(connection),
     abortSignal,
     onChunk: ({ chunk }) => timing.markChunk(chunk.type),

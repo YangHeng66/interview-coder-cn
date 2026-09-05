@@ -7,6 +7,9 @@ import type {
   ChatEvent,
   ChatRequestResult,
   KnowledgeContextUsed,
+  KnowledgeDiagnosticInput,
+  KnowledgeDiagnostic,
+  KnowledgePassage,
   KnowledgeImportProgress,
   KnowledgeImportResult,
   KnowledgeLinkPatch,
@@ -15,11 +18,78 @@ import type {
   KnowledgeProfilePatch,
   KnowledgeResult,
   KnowledgeSnapshot,
-  TranscriptionConfig
+  TranscriptionConfig,
+  TranscriptionTextEvent,
+  TranscriptionStatusEvent
+} from './contracts'
+import type {
+  LocalDirectory,
+  AssistantMode,
+  ConversationSummary,
+  ConversationView,
+  ModelDiagnosticInput,
+  ModelDiagnosticResult,
+  ShortcutRegistration
 } from './contracts'
 
 // Custom APIs for renderer
 const api = {
+  getUpdateStatus: () =>
+    ipcRenderer.invoke('getUpdateStatus') as Promise<'available' | 'downloaded' | null>,
+  downloadAppUpdate: () => ipcRenderer.invoke('downloadAppUpdate'),
+  installAppUpdate: () => ipcRenderer.invoke('installAppUpdate'),
+  onUpdateStatus: (callback: (status: 'available' | 'downloaded') => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: 'available' | 'downloaded') =>
+      callback(status)
+    ipcRenderer.on('update-status', listener)
+    return () => {
+      ipcRenderer.removeListener('update-status', listener)
+    }
+  },
+  browseLocalDirectory: (path: string | null) =>
+    ipcRenderer.invoke('browseLocalDirectory', path) as Promise<LocalDirectory>,
+  readChatDocuments: (paths: string[]) =>
+    ipcRenderer.invoke('readChatDocuments', paths) as Promise<ChatDocument[]>,
+  getConversations: () =>
+    ipcRenderer.invoke('getConversations') as Promise<{
+      conversations: ConversationSummary[]
+      active: Record<AssistantMode, string | null>
+      error: string | null
+    }>,
+  getConversationViews: () =>
+    ipcRenderer.invoke('getConversationViews') as Promise<Record<AssistantMode, ConversationView>>,
+  openConversation: (id: string) =>
+    ipcRenderer.invoke('openConversation', id) as Promise<Record<AssistantMode, ConversationView>>,
+  newConversation: (mode: AssistantMode) =>
+    ipcRenderer.invoke('newConversation', mode) as Promise<Record<AssistantMode, ConversationView>>,
+  renameConversation: (id: string, title: string) =>
+    ipcRenderer.invoke('renameConversation', id, title),
+  deleteConversation: (id: string) =>
+    ipcRenderer.invoke('deleteConversation', id) as Promise<
+      Record<AssistantMode, ConversationView>
+    >,
+  exportConversation: (id: string) =>
+    ipcRenderer.invoke('exportConversation', id) as Promise<string>,
+  onConversationStorageError: (callback: (message: string) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, message: string) => callback(message)
+    ipcRenderer.on('conversation-storage-error', listener)
+    return () => {
+      ipcRenderer.removeListener('conversation-storage-error', listener)
+    }
+  },
+  diagnoseModel: (input: ModelDiagnosticInput) =>
+    ipcRenderer.invoke('diagnoseModel', input) as Promise<ModelDiagnosticResult>,
+  setShortcutRecording: (recording: boolean) =>
+    ipcRenderer.invoke('setShortcutRecording', recording) as Promise<
+      Record<string, ShortcutRegistration>
+    >,
+  onReaderAction: (callback: (action: string) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, action: string) => callback(action)
+    ipcRenderer.on('reader-action', listener)
+    return () => {
+      ipcRenderer.removeListener('reader-action', listener)
+    }
+  },
   // Get app settings
   getAppSettings: () => ipcRenderer.invoke('getAppSettings'),
   // Update app settings
@@ -43,10 +113,13 @@ const api = {
   initShortcuts: (shortcuts: Record<string, { action: string; key: string }>) =>
     ipcRenderer.invoke('initShortcuts', shortcuts),
   // Get shortcuts
-  getShortcuts: () => ipcRenderer.invoke('getShortcuts'),
+  getShortcuts: () =>
+    ipcRenderer.invoke('getShortcuts') as Promise<Record<string, ShortcutRegistration>>,
   // Update shortcuts
   updateShortcuts: (shortcuts: { action: string; key: string }[]) =>
-    ipcRenderer.invoke('updateShortcuts', shortcuts),
+    ipcRenderer.invoke('updateShortcuts', shortcuts) as Promise<
+      Record<string, ShortcutRegistration>
+    >,
 
   // Trigger the small set of user-facing actions exposed by the overlay toolbar.
   triggerAction: (
@@ -64,6 +137,7 @@ const api = {
       | 'moveMainWindowLeft'
       | 'moveMainWindowRight'
       | 'toggleTranscription'
+      | 'pauseResumeTranscription'
       | 'clearTranscription'
       | 'sendTranscriptionToChat'
   ) => ipcRenderer.invoke('triggerAction', action),
@@ -132,6 +206,12 @@ const api = {
   },
 
   // Local knowledge base
+  diagnoseKnowledge: (input: KnowledgeDiagnosticInput) =>
+    ipcRenderer.invoke('diagnoseKnowledge', input) as Promise<KnowledgeResult<KnowledgeDiagnostic>>,
+  previewKnowledgeDocument: (documentId: string) =>
+    ipcRenderer.invoke('previewKnowledgeDocument', documentId) as Promise<
+      KnowledgeResult<KnowledgePassage[]>
+    >,
   getKnowledgeSnapshot: () =>
     ipcRenderer.invoke('getKnowledgeSnapshot') as Promise<KnowledgeSnapshot>,
   createKnowledgeProfile: (input: KnowledgeProfileInput) =>
@@ -154,8 +234,8 @@ const api = {
     ipcRenderer.invoke('setBuiltinKnowledgeEnabled', enabled) as Promise<
       KnowledgeResult<KnowledgeSnapshot>
     >,
-  importKnowledgeDocuments: (profileId?: string) =>
-    ipcRenderer.invoke('importKnowledgeDocuments', profileId) as Promise<
+  importKnowledgeDocuments: (profileId: string | undefined, paths: string[]) =>
+    ipcRenderer.invoke('importKnowledgeDocuments', profileId, paths) as Promise<
       KnowledgeResult<KnowledgeImportResult | null>
     >,
   updateKnowledgeDocumentLink: (profileId: string, documentId: string, patch: KnowledgeLinkPatch) =>
@@ -264,14 +344,13 @@ const api = {
   },
 
   // Select screenshot save directory
-  selectScreenshotDir: () => ipcRenderer.invoke('selectScreenshotDir') as Promise<string | null>,
 
   // Transcription
-  startTranscription: (config: TranscriptionConfig) =>
-    ipcRenderer.invoke('start-transcription', config),
+  startTranscription: (config: TranscriptionConfig, sessionId: string) =>
+    ipcRenderer.invoke('start-transcription', config, sessionId),
   stopTranscription: () => ipcRenderer.invoke('stop-transcription'),
-  sendTranscriptionAudioChunk: (chunk: ArrayBuffer) =>
-    ipcRenderer.send('transcription-audio-chunk', chunk),
+  sendTranscriptionAudioChunk: (sessionId: string, chunk: ArrayBuffer) =>
+    ipcRenderer.send('transcription-audio-chunk', sessionId, chunk),
   getTranscriptionText: () => ipcRenderer.invoke('get-transcription-text') as Promise<string>,
 
   onToggleTranscription: (callback: () => void) => {
@@ -280,7 +359,19 @@ const api = {
   removeToggleTranscriptionListener: () => {
     ipcRenderer.removeAllListeners('toggle-transcription')
   },
-  onTranscriptionText: (callback: (data: { text: string; isPartial: boolean }) => void) => {
+  onPauseResumeTranscription: (callback: () => void) => {
+    ipcRenderer.on('pause-resume-transcription', callback)
+    return () => {
+      ipcRenderer.removeListener('pause-resume-transcription', callback)
+    }
+  },
+  onTranscriptionStatus: (callback: (event: TranscriptionStatusEvent) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: TranscriptionStatusEvent) =>
+      callback(data)
+    ipcRenderer.on('transcription-status', listener)
+    return () => ipcRenderer.removeListener('transcription-status', listener)
+  },
+  onTranscriptionText: (callback: (data: TranscriptionTextEvent) => void) => {
     ipcRenderer.on('transcription-text', (_event, data) => callback(data))
   },
   removeTranscriptionTextListener: () => {

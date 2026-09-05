@@ -1,202 +1,198 @@
-import { useState, useEffect, useCallback, createContext, useContext } from 'react'
+import { useState, useEffect } from 'react'
+import { Pencil, RotateCcw, X, Keyboard } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import ShortcutRenderer from '@/components/ShortcutRenderer'
-import { isModifierKey, getShortcutAccelerator } from '@/lib/utils/keyboard'
-import { useShortcutsStore } from '@/lib/store/shortcuts'
-import { isTranscriptionConfigured, useSettingsStore } from '@/lib/store/settings'
-
-const ShortcutsContext = createContext<{
-  recordingAction: string | null
-  setRecordingAction: (action: string | null) => void
-}>({
-  recordingAction: null,
-  setRecordingAction: () => {}
-})
+import { getShortcutAccelerator, isModifierKey } from '@/lib/utils/keyboard'
+import { shortcutDefinitions, useShortcutsStore } from '@/lib/store/shortcuts'
 
 export function CustomShortcuts() {
-  const { shortcuts, updateShortcut } = useShortcutsStore()
-  const transcriptionConfigured = useSettingsStore((state) => isTranscriptionConfigured(state))
+  const { shortcuts, registrations, setRegistrations, updateShortcut, setRecording } =
+    useShortcutsStore()
   const [recordingAction, setRecordingAction] = useState<string | null>(null)
-
-  const onShortcutChange = useCallback(
-    (action: string, key: string) => {
-      const newShortcut = { ...shortcuts[action], key }
-      updateShortcut(action, newShortcut)
-      window.api.updateShortcuts([newShortcut])
-    },
-    [shortcuts, updateShortcut]
-  )
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (!recordingAction) return
-
-      e.preventDefault()
-
-      if (isModifierKey(e.code)) return
-      const accelerator = getShortcutAccelerator(e)
-      // User press escape to cancel recording.
-      if (e.code === 'Escape' && !accelerator) {
-        setRecordingAction(null)
-      }
-      if (!accelerator) return
-      onShortcutChange(recordingAction, accelerator)
-      setRecordingAction(null)
-    },
-    [recordingAction, onShortcutChange]
-  )
+  const [search, setSearch] = useState('')
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
+    void window.api.getShortcuts().then(setRegistrations)
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
+      setRecording(false)
+      void window.api.setShortcutRecording(false).then(setRegistrations)
     }
-  }, [handleKeyDown])
+  }, [setRegistrations, setRecording])
+
+  const finishRecording = async () => {
+    setRecordingAction(null)
+    setRecording(false)
+    setRegistrations(await window.api.setShortcutRecording(false))
+  }
+
+  const apply = async (action: string, key: string) => {
+    setRecordingAction(null)
+    const shortcut = { ...shortcuts[action], key }
+    updateShortcut(action, shortcut)
+    setRegistrations(await window.api.updateShortcuts([shortcut]))
+    await finishRecording()
+  }
+
+  useEffect(() => {
+    if (!recordingAction) return
+    const onKey = (event: KeyboardEvent) => {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      if (event.repeat || isModifierKey(event.code)) return
+      if (event.code === 'Escape') {
+        void finishRecording()
+        return
+      }
+      const key = getShortcutAccelerator(event)
+      if (!key) {
+        setMessage('此按键组合不可用')
+        return
+      }
+      void apply(recordingAction, key)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  })
 
   return (
-    <ShortcutsContext.Provider value={{ recordingAction, setRecordingAction }}>
-      <div className="space-y-4">
-        {/* Window Management */}
-        <div className="space-y-2">
-          <h3 className="text-sm text-gray-500">窗口管理</h3>
-          <Shortcut label="隐藏/显示窗口" shortcut="hideOrShowMainWindow" />
-          <Shortcut
-            label="鼠标穿透"
-            description="启用后窗口对鼠标穿透，可以点击窗口背后的内容"
-            shortcut="ignoreOrEnableMouse"
-          />
-          <Shortcut
-            label="提高不透明度"
-            description="每次调整 5%，窗口更清晰"
-            shortcut="increaseOpacity"
-          />
-          <Shortcut
-            label="提高透明度"
-            description="每次调整 5%，窗口更透明"
-            shortcut="decreaseOpacity"
-          />
-        </div>
-
-        {/* Screenshot & AI */}
-        <div className="space-y-2">
-          <h3 className="text-sm text-gray-500">截图与AI</h3>
-          <Shortcut
-            label="截图"
-            description="截图并生成解题建议（会新开对话）"
-            shortcut="takeScreenshot"
-          />
-          <Shortcut
-            label="追加截图"
-            description="在当前对话中追加截图并生成解题建议，适用于长题目等场景"
-            shortcut="appendScreenshot"
-          />
-          <Shortcut
-            label="停止生成"
-            description="打断当前正在生成的解题建议"
-            shortcut="stopSolutionStream"
-          />
-          <Shortcut
-            label="语音转录"
-            description="开始/暂停实时语音转录"
-            shortcut="toggleTranscription"
-            disabled={!transcriptionConfigured}
-          />
-          <Shortcut
-            label="清除转录文本"
-            description="清除已转录的文本（不会提交给AI）"
-            shortcut="clearTranscription"
-            disabled={!transcriptionConfigured}
-          />
-          <Shortcut
-            label="手动发送语音到文字对话"
-            description="保持识别运行，将当前未发送的转录作为独立消息提交"
-            shortcut="sendTranscriptionToChat"
-            disabled={!transcriptionConfigured}
-          />
-        </div>
-
-        {/* Navigation */}
-        <div className="space-y-2">
-          <h3 className="text-sm text-gray-500">页面导航</h3>
-          <Shortcut label="向上翻页" shortcut="pageUp" />
-          <Shortcut label="向下翻页" shortcut="pageDown" />
-        </div>
-
-        {/* Window Movement */}
-        <div className="space-y-2">
-          <h3 className="text-sm text-gray-500">窗口移动</h3>
-          <Shortcut label="向上移动窗口" shortcut="moveMainWindowUp" />
-          <Shortcut label="向下移动窗口" shortcut="moveMainWindowDown" />
-          <Shortcut label="向左移动窗口" shortcut="moveMainWindowLeft" />
-          <Shortcut label="向右移动窗口" shortcut="moveMainWindowRight" />
-        </div>
+    <div className="shortcut-editor">
+      <input
+        aria-label="搜索快捷键操作"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="搜索操作"
+        className="shortcut-search"
+      />
+      <div className="shortcut-table-head">
+        <span>操作</span>
+        <span>快捷键</span>
+        <span>状态 / 范围</span>
+        <span />
       </div>
-    </ShortcutsContext.Provider>
-  )
-}
-
-function Shortcut({
-  label,
-  description,
-  shortcut: shortcutAction,
-  disabled
-}: {
-  label: string
-  description?: string
-  shortcut: string
-  disabled?: boolean
-}) {
-  const { shortcuts } = useShortcutsStore()
-  const { recordingAction, setRecordingAction } = useContext(ShortcutsContext)
-  const shortcut = shortcuts[shortcutAction]
-  const isRecording = recordingAction === shortcutAction
-
-  return shortcut ? (
-    <div
-      className={`flex items-center justify-between${disabled ? ' opacity-40 pointer-events-none' : ''}`}
-    >
-      <div className="flex gap-2 items-center">
-        <label className="text-sm font-medium">{label}</label>
-        {description && <p className="text-xs font-light">{description}</p>}
-      </div>
-      <span
-        className="cursor-pointer"
-        onClick={() => setRecordingAction(isRecording ? null : shortcutAction)}
-      >
-        {!isRecording ? (
-          <ShortcutRenderer shortcut={shortcut.key} />
-        ) : (
-          <span className="font-mono text-sm align-middle rounded-md pl-2 pr-1 py-1 transition-colors bg-gray-200 animate-pulse">
-            请按下自定义快捷键...
-          </span>
-        )}
-      </span>
+      {Object.entries(shortcutDefinitions)
+        .filter(([, value]) => value.label.includes(search) || value.category.includes(search))
+        .map(([action, definition]) => {
+          const shortcut = shortcuts[action]
+          const registration = registrations[action]
+          const isRecording = recordingAction === action
+          const status = registration?.status
+          const statusText = !shortcut.key
+            ? '未绑定'
+            : status === 'registered'
+              ? '已生效'
+              : status === 'failed'
+                ? '注册失败'
+                : status === 'conflict'
+                  ? '按键重复'
+                  : '待注册'
+          const conflict = registration?.conflictAction
+          return (
+            <div className="shortcut-row" key={action}>
+              <div>
+                <div className="font-medium">{definition.label}</div>
+                <div className="text-xs text-neutral-500">{definition.category}</div>
+              </div>
+              <button
+                type="button"
+                className={`shortcut-binding ${isRecording ? 'is-recording' : ''}`}
+                aria-label={`修改${definition.label}快捷键`}
+                onClick={async () => {
+                  if (isRecording) {
+                    await finishRecording()
+                    return
+                  }
+                  setMessage('')
+                  setRecording(true)
+                  await window.api.setShortcutRecording(true)
+                  setRecordingAction(action)
+                }}
+              >
+                {isRecording ? (
+                  <>
+                    <Keyboard className="size-4" />
+                    录制中
+                  </>
+                ) : shortcut.key ? (
+                  <ShortcutRenderer shortcut={shortcut.key} />
+                ) : (
+                  <>
+                    <Pencil className="size-3" />
+                    设置
+                  </>
+                )}
+              </button>
+              <div className="min-w-0 text-xs">
+                <div
+                  className={
+                    status === 'failed' || status === 'conflict'
+                      ? 'text-red-700'
+                      : 'text-emerald-700'
+                  }
+                >
+                  {statusText}
+                </div>
+                <div className="text-neutral-500">
+                  {definition.scope === 'global' ? '全局' : '应用内'}
+                </div>
+                {conflict && (
+                  <div className="break-words text-red-700">
+                    {shortcutDefinitions[conflict as keyof typeof shortcutDefinitions].label}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={`恢复${definition.label}默认快捷键`}
+                  onClick={() => void apply(action, shortcut.defaultKey)}
+                >
+                  <RotateCcw className="size-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={`清除${definition.label}快捷键`}
+                  disabled={!shortcut.key && !isRecording}
+                  onClick={() => void apply(action, '')}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          )
+        })}
+      {recordingAction && (
+        <div className="flex items-center justify-between text-sm">
+          <span>{message || '等待按键'}</span>
+          <Button size="sm" variant="outline" onClick={() => void finishRecording()}>
+            <X className="size-3" />
+            取消
+          </Button>
+        </div>
+      )}
     </div>
-  ) : null
+  )
 }
 
 export function ResetDefaultShortcuts() {
-  const { shortcuts, resetShortcuts } = useShortcutsStore()
   return (
     <Button
       variant="outline"
       size="sm"
-      className="ml-auto"
       onClick={async () => {
-        await window.api.updateShortcuts(
-          Object.values(shortcuts)
-            .filter(({ key, defaultKey }) => key !== defaultKey)
-            .map((shortcut) => ({
-              ...shortcut,
-              key: shortcut.defaultKey
-            }))
+        const store = useShortcutsStore.getState()
+        store.resetShortcuts()
+        store.setRegistrations(
+          await window.api.updateShortcuts(Object.values(useShortcutsStore.getState().shortcuts))
         )
-        resetShortcuts()
-        toast.success('重置默认快捷键成功')
+        toast.success('已恢复默认配置')
       }}
     >
-      重置默认快捷键
+      <RotateCcw className="size-3.5" />
+      恢复默认
     </Button>
   )
 }

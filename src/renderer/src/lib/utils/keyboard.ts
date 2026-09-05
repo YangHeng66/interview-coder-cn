@@ -110,7 +110,7 @@ export function getShortcutAccelerator(event: KeyboardEvent) {
   if (isAltActive) modifiers.push('Alt')
   if (event.shiftKey) modifiers.push('Shift')
   if (event.metaKey) modifiers.push(isMac ? 'CommandOrControl' : 'Meta')
-  if (modifiers.length === 0) return null
+  if (modifiers.length === 0 && !/^F\d+$/.test(keyCode)) return null
 
   const specialKeysMap = {
     ArrowUp: 'Up',
@@ -141,7 +141,7 @@ export function getShortcutAccelerator(event: KeyboardEvent) {
   if (keyCode in specialKeysMap) {
     key = specialKeysMap[keyCode as keyof typeof specialKeysMap]
   }
-  return `${modifiers.join('+')}+${key}`
+  return [...modifiers, key].join('+')
 }
 
 export function getShortcutAcceleratorDisplay(accelerator: string) {
@@ -161,5 +161,5 @@ export function getShortcutAcceleratorDisplay(accelerator: string) {
   } as const
   const key = accelerator.split('+').at(-1)!
 
-  return `${modifiers.join('+')}+${key in specialKeysMap ? specialKeysMap[key] : key}`
+  return [...modifiers, key in specialKeysMap ? specialKeysMap[key] : key].join('+')
 }

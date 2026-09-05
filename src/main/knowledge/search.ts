@@ -1,14 +1,17 @@
 import MiniSearch from 'minisearch'
+import appConfig from '../../../app.config.json'
 import type {
   KnowledgeLinkPriority,
   KnowledgeProfile,
+  KnowledgePassage,
   KnowledgeSource
 } from '../../preload/contracts'
 
-export const KNOWLEDGE_CONTEXT_CHARACTER_LIMIT = 12_000
-const DEFAULT_MAX_CHUNKS = 6
-const CHUNK_TARGET_LENGTH = 1_200
-const CHUNK_OVERLAP_LENGTH = 200
+const config = appConfig.knowledge
+export const KNOWLEDGE_CONTEXT_CHARACTER_LIMIT = config.contextCharacterLimit
+const DEFAULT_MAX_CHUNKS = config.maxChunks
+const CHUNK_TARGET_LENGTH = config.chunkTargetLength
+const CHUNK_OVERLAP_LENGTH = config.chunkOverlapLength
 
 export type KnowledgeChunk = {
   id: string
@@ -28,14 +31,15 @@ export type KnowledgeRetrieval = {
   profileName: string
   context: string
   sources: KnowledgeSource[]
+  passages: KnowledgePassage[]
 }
 
-type SearchableChunk = KnowledgeChunk & {
+export type SearchableChunk = KnowledgeChunk & {
   documentName: string
   priority: KnowledgeLinkPriority
 }
 
-type SearchResultChunk = SearchableChunk & {
+export type SearchResultChunk = SearchableChunk & {
   score: number
 }
 
@@ -180,6 +184,36 @@ export class KnowledgeSearchIndex {
     searchable.forEach((chunk) => this.chunks.set(chunk.id, chunk))
   }
 
+  updateDocument(document: {
+    documentId: string
+    documentName: string
+    chunks: KnowledgeChunk[]
+  }): void {
+    this.removeDocument(document.documentId)
+    const chunks = document.chunks.map((chunk) => ({
+      ...chunk,
+      documentName: document.documentName,
+      priority: 'normal' as const
+    }))
+    this.index.addAll(chunks)
+    chunks.forEach((chunk) => this.chunks.set(chunk.id, chunk))
+  }
+
+  removeDocument(documentId: string): void {
+    for (const [id, chunk] of this.chunks) {
+      if (chunk.documentId === documentId) {
+        this.index.discard(id)
+        this.chunks.delete(id)
+      }
+    }
+  }
+
+  getDocumentChunks(documentId: string): SearchableChunk[] {
+    return Array.from(this.chunks.values())
+      .filter((chunk) => chunk.documentId === documentId)
+      .sort((left, right) => left.order - right.order)
+  }
+
   search(query: string, allowedDocumentIds: Set<string>): SearchResultChunk[] {
     const normalizedQuery = normalizeText(query)
     if (!normalizedQuery) return []
@@ -187,7 +221,7 @@ export class KnowledgeSearchIndex {
       .search(normalizedQuery, {
         combineWith: 'OR',
         prefix: (term) => /^[a-z0-9]/i.test(term) && term.length >= 3,
-        boost: { documentName: 1.5 },
+        boost: { documentName: config.documentNameBoost },
         filter: (result) => allowedDocumentIds.has(String(result.documentId))
       })
       .map((result) => ({
@@ -202,16 +236,14 @@ export class KnowledgeSearchIndex {
   }
 
   getFirstChunk(documentId: string): SearchableChunk | undefined {
-    return Array.from(this.chunks.values())
-      .filter((chunk) => chunk.documentId === documentId)
-      .sort((left, right) => left.order - right.order)[0]
+    return this.getDocumentChunks(documentId)[0]
   }
 }
 
 export function formatKnowledgeContext(options: {
   profile: KnowledgeProfile
   rankedChunks: SearchResultChunk[]
-  fallbackChunks: SearchableChunk[]
+  fallbackChunks?: SearchableChunk[]
   requiredChunks?: SearchableChunk[]
   characterLimit?: number
   maxChunks?: number
@@ -219,7 +251,10 @@ export function formatKnowledgeContext(options: {
   const characterLimit = options.characterLimit ?? KNOWLEDGE_CONTEXT_CHARACTER_LIMIT
   const maxChunks = options.maxChunks ?? DEFAULT_MAX_CHUNKS
   const profile = options.profile
-  const jobDescriptionLimit = Math.min(4_000, Math.max(0, Math.floor(characterLimit * 0.35)))
+  const jobDescriptionLimit = Math.min(
+    config.jobDescriptionCharacterLimit,
+    Math.floor(characterLimit * config.jobDescriptionBudgetRatio)
+  )
   const profileHeader = [
     `当前岗位档案：${profile.name}`,
     profile.company ? `公司：${profile.company}` : '',
@@ -239,23 +274,46 @@ export function formatKnowledgeContext(options: {
     selectedIds.add(chunk.id)
   }
 
-  // Query matches must win the limited context budget. Key documents and the
-  // bundled pack are fallbacks, not a reason to hide a more relevant chunk.
   options.rankedChunks.forEach(addChunk)
-  options.fallbackChunks.filter((chunk) => chunk.priority === 'key').forEach(addChunk)
-  options.requiredChunks?.forEach(addChunk)
-  options.fallbackChunks.forEach(addChunk)
+  if (config.fixedBackground === 'key-documents') {
+    options.fallbackChunks?.filter((chunk) => chunk.priority === 'key').forEach(addChunk)
+  }
+
+  // Adjacent chunks share a sliding overlap. Merge that text before spending the context budget.
+  const passages: SearchableChunk[] = []
+  const documentIds = [...new Set(selected.map((chunk) => chunk.documentId))]
+  for (const documentId of documentIds) {
+    const chunks = selected
+      .filter((chunk) => chunk.documentId === documentId)
+      .sort((a, b) => a.order - b.order)
+    let previousOrder = -1
+    for (const chunk of chunks) {
+      const previous = passages.at(-1)
+      if (previous?.documentId === documentId && previousOrder + 1 === chunk.order) {
+        let overlap = Math.min(CHUNK_OVERLAP_LENGTH, previous.text.length, chunk.text.length)
+        while (overlap > 0 && previous.text.slice(-overlap) !== chunk.text.slice(0, overlap))
+          overlap--
+        if (overlap) previous.text += chunk.text.slice(overlap)
+        else passages.push({ ...chunk })
+      } else if (!passages.some((passage) => passage.text.includes(chunk.text))) {
+        passages.push({ ...chunk })
+      }
+      previousOrder = chunk.order
+    }
+  }
 
   const blocks: string[] = []
+  const includedPassages: KnowledgePassage[] = []
   const sourceMap = new Map<string, KnowledgeSource>()
   // Reserve space for the safety instructions that wrap the retrieved content.
-  let usedCharacters = profileHeader.length + 450
-  for (const chunk of selected) {
+  let usedCharacters = profileHeader.length + config.contextWrapperReserve
+  for (const chunk of passages) {
     const prefix = `\n\n===== 知识库资料：${chunk.documentName} =====\n`
     const remaining = characterLimit - usedCharacters - prefix.length
-    if (remaining < 120) break
+    if (remaining < config.minimumExcerptCharacters) break
     const excerpt = chunk.text.slice(0, remaining)
     blocks.push(`${prefix}${excerpt}`)
+    includedPassages.push({ ...chunk, text: excerpt })
     usedCharacters += prefix.length + excerpt.length
 
     const source = sourceMap.get(chunk.documentId) ?? {
@@ -281,6 +339,7 @@ export function formatKnowledgeContext(options: {
     profileId: profile.id,
     profileName: profile.name,
     context,
+    passages: includedPassages,
     sources: Array.from(sourceMap.values())
   }
 }

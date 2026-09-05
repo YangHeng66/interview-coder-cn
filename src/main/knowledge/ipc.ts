@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import type {
+  KnowledgeDiagnosticInput,
   KnowledgeLinkPatch,
   KnowledgeProfileInput,
   KnowledgeProfilePatch
@@ -7,6 +8,12 @@ import type {
 import { knowledgeService } from './service'
 
 ipcMain.handle('getKnowledgeSnapshot', () => knowledgeService.getSnapshot())
+ipcMain.handle('diagnoseKnowledge', (_event, input: KnowledgeDiagnosticInput) =>
+  knowledgeService.diagnose(input)
+)
+ipcMain.handle('previewKnowledgeDocument', (_event, documentId: string) =>
+  knowledgeService.previewDocument(documentId)
+)
 
 ipcMain.handle('createKnowledgeProfile', (_event, input: KnowledgeProfileInput) =>
   knowledgeService.createProfile(input)
@@ -18,8 +25,10 @@ ipcMain.handle(
     knowledgeService.updateProfile(profileId, patch)
 )
 
-ipcMain.handle('importKnowledgeDocuments', (_event, profileId?: string) =>
-  knowledgeService.importDocuments(profileId)
+ipcMain.handle(
+  'importKnowledgeDocuments',
+  (_event, profileId: string | undefined, paths: string[]) =>
+    knowledgeService.importDocuments(profileId, paths)
 )
 
 ipcMain.handle(

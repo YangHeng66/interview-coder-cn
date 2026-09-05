@@ -1,0 +1,33 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">桌面多模态 AI 助手图标</title>
+  <desc id="desc">深色玻璃质感底面上的青蓝智能核心与轨道标记</desc>
+  <defs>
+    <linearGradient id="surface" x1="16" y1="8" x2="111" y2="122" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#252D3E"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="orbit" x1="19" y1="98" x2="112" y2="24" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#65E6F5"/>
+      <stop offset="0.55" stop-color="#8CA8FF"/>
+      <stop offset="1" stop-color="#D7E5FF"/>
+    </linearGradient>
+    <linearGradient id="core" x1="45" y1="84" x2="80" y2="43" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#46D6E8"/>
+      <stop offset="1" stop-color="#D6F7FF"/>
+    </linearGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="32" fill="url(#surface)"/>
+  <path d="M28 80.5C39.5 101 65.6 108.1 88.7 96.8C102.9 89.8 111.4 77.8 112 65.1" stroke="url(#orbit)" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M100.2 46.3C88.3 27.6 63.2 20.8 41.1 30.5C27.1 36.6 17.8 48.8 16.7 61.2" stroke="url(#orbit)" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M35 95.3C45.7 76.2 59.8 58.7 77.7 45.2" stroke="url(#orbit)" stroke-width="5.5" stroke-linecap="round"/>
+  <circle cx="64" cy="64" r="14" fill="#0F172A" stroke="url(#core)" stroke-width="5" filter="url(#glow)"/>
+  <circle cx="64" cy="64" r="4" fill="#F8FDFF"/>
+  <circle cx="28" cy="80.5" r="4.5" fill="#D8FAFF"/>
+  <circle cx="100.2" cy="46.3" r="4.5" fill="#AABEFF"/>
+  <circle cx="88.7" cy="96.8" r="3" fill="#F3D58A"/>
+  <rect x="4.75" y="4.75" width="118.5" height="118.5" rx="31.25" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="1.5"/>
+</svg>

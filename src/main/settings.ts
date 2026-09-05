@@ -1,4 +1,5 @@
-import { app, dialog, ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
+import appConfig from '../../app.config.json'
 import { setToolbarOpacity, syncToolbarSettings } from './toolbar-window'
 import {
   DEEPSEEK_API_BASE_URL,
@@ -52,18 +53,9 @@ export function applyDockVisibility(hidden: boolean): void {
   }
 }
 
-ipcMain.handle('selectScreenshotDir', async () => {
-  const result = await dialog.showOpenDialog({
-    properties: ['openDirectory', 'createDirectory'],
-    title: '选择截图保存目录'
-  })
-  if (result.canceled || result.filePaths.length === 0) {
-    return null
-  }
-  return result.filePaths[0]
-})
-
 export const settings = {
+  knowledgeQueryRewrite: appConfig.performance.knowledgeQueryRewrite,
+  requestHistoryTurns: appConfig.performance.requestHistoryTurns,
   apiProtocol: 'chat-completions' as ApiProtocol,
   apiBaseURL: process.env.API_BASE_URL || '',
   apiKey: process.env.API_KEY || '',

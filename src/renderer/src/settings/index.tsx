@@ -50,6 +50,9 @@ import { isMac } from '@/lib/utils/env'
 import { ApiBaseUrlInput } from './ApiBaseUrlInput'
 import { SelectModel } from './SelectModel'
 import { ThinkingEffortSlider } from './ThinkingEffortSlider'
+import { ModelDiagnostics } from './ModelDiagnostics'
+import { ReaderPreferences } from './ReaderPreferences'
+import { chooseLocalFiles } from '@/lib/local-file-picker'
 import { CustomShortcuts, ResetDefaultShortcuts } from './CustomShortcuts'
 import {
   Select,
@@ -172,7 +175,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Settings Content */}
-      <div id="app-content" className="flex flex-col gap-4 p-8">
+      <div id="app-content" className="settings-content flex flex-col gap-4 p-8">
+        <ReaderPreferences />
         {/* Screenshot model settings */}
         <div className="bg-gray-300/80 rounded-lg p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -194,6 +198,7 @@ export default function SettingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="chat-completions">Chat Completions</SelectItem>
+                  <SelectItem value="messages">Messages</SelectItem>
                   <SelectItem value="responses">Responses（Codex）</SelectItem>
                 </SelectContent>
               </Select>
@@ -275,6 +280,15 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+        <ModelDiagnostics
+          connection={{
+            apiProtocol,
+            apiBaseURL,
+            apiKey,
+            model,
+            thinkingLevel: screenshotThinkingLevel
+          }}
+        />
         {/* Text chat model settings */}
         <div className="bg-gray-300/80 rounded-lg p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -324,6 +338,7 @@ export default function SettingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="chat-completions">Chat Completions</SelectItem>
+                  <SelectItem value="messages">Messages</SelectItem>
                   <SelectItem value="responses">Responses（Codex）</SelectItem>
                 </SelectContent>
               </Select>
@@ -415,6 +430,15 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+        <ModelDiagnostics
+          connection={{
+            apiProtocol: chatProvider === 'deepseek' ? 'chat-completions' : chatApiProtocol,
+            apiBaseURL: chatProvider === 'deepseek' ? DEEPSEEK_API_BASE_URL : chatApiBaseURL,
+            apiKey: chatApiKey,
+            model: chatModel,
+            thinkingLevel: chatThinkingLevel
+          }}
+        />
         {/* Transcription Settings */}
         <div className="bg-gray-300/80 rounded-lg p-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center">
@@ -734,7 +758,7 @@ export default function SettingsPage() {
                     {!scene.isPreset && (
                       <button
                         className="mr-1.5 p-0.5 rounded-full opacity-60 hover:opacity-100 hover:bg-black/10"
-                        title="删除该场景"
+                        data-tooltip="删除该场景"
                         onClick={(e) => {
                           e.stopPropagation()
                           setSceneToDelete(scene.id)
@@ -765,7 +789,7 @@ export default function SettingsPage() {
                   {activeScene.isPreset && (
                     <button
                       className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
-                      title="恢复该场景的默认提示词"
+                      data-tooltip="恢复该场景的默认提示词"
                       onClick={handleResetScenePrompt}
                     >
                       <RotateCcw className="h-3 w-3" />
@@ -913,14 +937,13 @@ export default function SettingsPage() {
 
         {/* Shortcuts Settings */}
         <div className="bg-gray-300/80 rounded-lg p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center">
-            <Keyboard className="h-5 w-5 mr-2" />
-            快捷键设置
-            <div className="text-sm font-light ml-2 mt-1">
-              只有在主界面时，快捷键才有效。当前页面仅部分快捷键生效。
-            </div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex shrink-0 items-center text-lg font-semibold">
+              <Keyboard className="h-5 w-5 mr-2" />
+              快捷键设置
+            </h2>
             <ResetDefaultShortcuts />
-          </h2>
+          </div>
           <CustomShortcuts />
         </div>
 
@@ -955,9 +978,14 @@ export default function SettingsPage() {
                 </label>
                 <button
                   className="text-xs text-gray-600 max-w-48 truncate hover:text-gray-900 cursor-pointer transition-colors"
-                  title="点击选择保存目录"
+                  data-tooltip="点击选择保存目录"
                   onClick={async () => {
-                    const dir = await window.api.selectScreenshotDir()
+                    const [dir] = await chooseLocalFiles({
+                      title: '选择截图保存目录',
+                      mode: 'directory',
+                      extensions: [],
+                      multiple: false
+                    })
                     if (dir) updateSetting('screenshotDir', dir)
                   }}
                 >

@@ -1,6 +1,84 @@
-export type ApiProtocol = 'chat-completions' | 'responses'
+import appConfig from '../../app.config.json'
 
-export const THINKING_LEVELS = ['auto', 'none', 'minimal', 'low', 'medium', 'high'] as const
+export type ApiProtocol = 'chat-completions' | 'responses' | 'messages'
+
+export function getApiEndpoint(baseURL: string, protocol: ApiProtocol): string {
+  return baseURL.trim().replace(/\/+$/, '') + appConfig.protocolPaths[protocol]
+}
+
+export type ModelDiagnosticInput = {
+  apiBaseURL: string
+  apiKey: string
+  apiProtocol: ApiProtocol
+  model: string
+  thinkingLevel: ThinkingLevel
+  kind: 'text' | 'image' | 'stream'
+  image?: string
+}
+
+export type ModelDiagnosticResult = {
+  ok: boolean
+  endpoint: string
+  elapsedMs: number
+  firstTextMs: number | null
+  status: number | null
+  text: string
+  error: string | null
+}
+
+export type ShortcutRegistration = {
+  action: string
+  key: string
+  status: 'registered' | 'failed' | 'available' | 'disabled' | 'conflict'
+  conflictAction?: string
+}
+
+export type SavedChatMessage = {
+  id: string
+  requestId: string
+  role: 'user' | 'assistant'
+  content: string
+  source?: ChatMessageSource
+  documents?: ChatDocument[]
+  status?: 'streaming' | 'complete' | 'stopped' | 'error'
+  error?: string
+}
+
+export type ConversationSummary = {
+  id: string
+  title: string
+  mode: AssistantMode
+  createdAt: string
+  updatedAt: string
+}
+
+export type LocalDirectory = {
+  path: string
+  parent: string
+  entries: { name: string; path: string; directory: boolean }[]
+}
+
+export type ConversationView = ConversationSummary & {
+  chatMessages: SavedChatMessage[]
+  visionText: string
+  visionStatus: 'idle' | 'streaming' | 'complete' | 'stopped' | 'error'
+  visionError: string | null
+  screenshots: string[]
+  sources: KnowledgeContextUsed[]
+  profileId: string | null
+  builtinKnowledge: boolean
+}
+
+export const THINKING_LEVELS = [
+  'auto',
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max'
+] as const
 
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number]
 
@@ -31,11 +109,20 @@ function isDeepSeekModel(model: string): boolean {
 }
 
 export function getThinkingLevelsForModel(model: string): readonly ThinkingLevel[] {
+  const rule = appConfig.modelThinkingRules.find((rule) =>
+    new RegExp(rule.pattern, 'i').test(model.trim())
+  )
+  if (rule) return rule.levels as ThinkingLevel[]
   if (isGpt56Model(model)) return GPT_56_THINKING_LEVELS
   return isDeepSeekModel(model) ? DEEPSEEK_THINKING_LEVELS : DEFAULT_MODEL_THINKING_LEVELS
 }
 
 export function normalizeThinkingLevelForModel(model: string, level: ThinkingLevel): ThinkingLevel {
+  const rule = appConfig.modelThinkingRules.find((rule) =>
+    new RegExp(rule.pattern, 'i').test(model.trim())
+  )
+  if (rule && level in rule.migrations)
+    return rule.migrations[level as keyof typeof rule.migrations] as ThinkingLevel
   // GPT-5.6 replaced the legacy `minimal` effort with `none`. Preserve an
   // existing user's intent by selecting the lowest supported reasoning level.
   return isGpt56Model(model) && level === 'minimal' ? 'low' : level
@@ -50,6 +137,21 @@ export type ChatMessageSource = 'typed' | 'transcription'
 export type TranscriptionProvider = 'dashscope' | 'volcengine'
 
 export type TranscriptionAudioSource = 'system' | 'microphone' | 'mixed'
+
+export type TranscriptionStatus =
+  | 'idle'
+  | 'connecting'
+  | 'listening'
+  | 'finishing'
+  | 'stopped'
+  | 'error'
+export type TranscriptionStatusEvent = { sessionId: string; status: TranscriptionStatus }
+export type TranscriptionTextEvent = {
+  text: string
+  isPartial: boolean
+  confirmedText: string
+  partialText: string
+}
 
 export const DEFAULT_DASHSCOPE_ASR_MODEL = 'fun-asr-realtime'
 export const DEFAULT_DASHSCOPE_ASR_WS_URL = 'wss://dashscope.aliyuncs.com/api-ws/v1/inference/'
@@ -260,6 +362,35 @@ export type KnowledgeContextUsed = {
 }
 
 export type KnowledgeResult<T> = { ok: true; data: T } | { ok: false; error: string }
+
+export type KnowledgePassage = {
+  id: string
+  documentId: string
+  documentName: string
+  order: number
+  text: string
+}
+
+export type KnowledgeDiagnosticInput = {
+  query: string
+  profileId: string | null
+  includeBuiltin: boolean
+}
+
+export type KnowledgeDiagnostic = {
+  query: string
+  profileName: string
+  elapsedMs: number
+  searchMs: number
+  indexMs: number
+  indexedDocuments: number
+  updatedDocuments: number
+  candidateCount: number
+  candidates: (KnowledgePassage & { score: number })[]
+  passages: KnowledgePassage[]
+  context: string
+  contextCharacters: number
+}
 
 export const KNOWLEDGE_DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md', '.markdown'] as const
 export const KNOWLEDGE_DOCUMENT_ACCEPT = KNOWLEDGE_DOCUMENT_EXTENSIONS.join(',')

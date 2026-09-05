@@ -54,13 +54,13 @@ export function AppStatusBar() {
   const hasActiveConversation = screenshotData && solutionChunks.length > 0
 
   return (
-    <div className="absolute bottom-0 flex items-center justify-between w-full text-blue-100 bg-gray-600/10 px-4 pb-1">
+    <div className="screenshot-status flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/10 px-4 py-2 text-neutral-200">
       <div>
         {isReceivingSolution ? (
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-r-2 border-[currentColor]"></div>
             <span className="text-sm">正在生成...</span>
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex justify-center z-50 pointer-events-none">
+            <div className="flex justify-center">
               <Button
                 variant="secondary"
                 className="h-8 px-4 text-base shadow-lg pointer-events-auto"

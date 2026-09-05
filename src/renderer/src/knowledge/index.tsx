@@ -6,7 +6,9 @@ import {
   Building2,
   CircleAlert,
   FileText,
-  LockKeyhole,
+  Search,
+  Eye,
+  Check,
   Plus,
   RefreshCw,
   Save,
@@ -16,8 +18,11 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
+import { chooseLocalFiles } from '@/lib/local-file-picker'
 import {
   BUILTIN_FRONTEND_KNOWLEDGE_TOPICS,
+  BUILTIN_FRONTEND_KNOWLEDGE_DOCUMENT_PREFIX,
+  KNOWLEDGE_DOCUMENT_EXTENSIONS,
   type KnowledgeDocument,
   type KnowledgeProfile,
   type KnowledgeProfileInput
@@ -34,11 +39,21 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useKnowledgeStore } from '@/lib/store/knowledge'
 import { useChatStore } from '@/lib/store/chat'
 import { useSolutionStore } from '@/lib/store/solution'
 import { cn, hasBuiltinKnowledgeApi } from '@/lib/utils'
+import { RetrievalDiagnostic } from './RetrievalDiagnostic'
+import { DocumentPreview } from './DocumentPreview'
+import { navigateKnowledgeTabs } from './tab-navigation'
 
 const emptyProfileInput: KnowledgeProfileInput = {
   name: '',
@@ -71,6 +86,12 @@ export default function KnowledgePage() {
   const [pendingActivationId, setPendingActivationId] = useState<string | null>(null)
   const [pendingBuiltinEnabled, setPendingBuiltinEnabled] = useState<boolean | null>(null)
   const [busyAction, setBusyAction] = useState<string | null>(null)
+  const [tab, setTab] = useState<'documents' | 'profile' | 'diagnostic' | 'builtin'>('documents')
+  const [browseAll, setBrowseAll] = useState(false)
+  const [documentSearch, setDocumentSearch] = useState('')
+  const [profileSearch, setProfileSearch] = useState('')
+  const [documentFilter, setDocumentFilter] = useState('all')
+  const [preview, setPreview] = useState<{ id: string; name: string } | null>(null)
   const hasVisionContext = useSolutionStore((state) =>
     Boolean(state.screenshotData || state.solutionChunks.length || state.isLoading)
   )
@@ -82,6 +103,7 @@ export default function KnowledgePage() {
   )
 
   useEffect(() => {
+    if (browseAll) return
     if (
       selectedProfileId &&
       snapshot.profiles.some((profile) => profile.id === selectedProfileId)
@@ -89,7 +111,7 @@ export default function KnowledgePage() {
       return
     }
     setSelectedProfileId(snapshot.activeProfileId ?? snapshot.profiles[0]?.id ?? null)
-  }, [selectedProfileId, snapshot.activeProfileId, snapshot.profiles])
+  }, [selectedProfileId, snapshot.activeProfileId, snapshot.profiles, browseAll])
 
   useEffect(() => {
     setDraft(
@@ -102,7 +124,26 @@ export default function KnowledgePage() {
           }
         : emptyProfileInput
     )
-  }, [selectedProfile])
+    // Document association updates must not replace an unsaved profile draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedProfile?.id,
+    selectedProfile?.name,
+    selectedProfile?.company,
+    selectedProfile?.role,
+    selectedProfile?.jobDescription
+  ])
+
+  const visibleDocuments = snapshot.documents.filter((document) => {
+    const linked = selectedProfile?.documentLinks.some((link) => link.documentId === document.id)
+    return (
+      document.name.toLowerCase().includes(documentSearch.toLowerCase()) &&
+      (documentFilter === 'all' ||
+        (documentFilter === 'linked' && linked) ||
+        (documentFilter === 'unlinked' && !linked) ||
+        (documentFilter === 'error' && document.status === 'error'))
+    )
+  })
 
   const runAction = async (key: string, action: () => Promise<void>) => {
     if (busyAction) return
@@ -129,6 +170,8 @@ export default function KnowledgePage() {
       const result = await window.api.createKnowledgeProfile(newProfile)
       if (!result.ok) throw new Error(result.error)
       setSelectedProfileId(result.data.id)
+      setBrowseAll(false)
+      setTab('profile')
       setNewProfile(emptyProfileInput)
       setCreateOpen(false)
       toast.success('岗位档案已创建')
@@ -196,7 +239,14 @@ export default function KnowledgePage() {
 
   const importDocuments = () =>
     runAction('import-documents', async () => {
-      const result = await window.api.importKnowledgeDocuments(selectedProfile?.id)
+      const paths = await chooseLocalFiles({
+        title: '导入知识库文档',
+        mode: 'files',
+        extensions: KNOWLEDGE_DOCUMENT_EXTENSIONS,
+        multiple: true
+      })
+      if (!paths.length) return
+      const result = await window.api.importKnowledgeDocuments(selectedProfile?.id, paths)
       if (!result.ok) throw new Error(result.error)
       if (!result.data) return
       setSnapshot(result.data.snapshot)
@@ -253,7 +303,7 @@ export default function KnowledgePage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-gray-500 text-gray-950">
+    <div className="knowledge-page">
       <div id="app-header" className="flex items-center">
         <div className="actions">
           <Button variant="ghost" asChild size="icon" className="mr-2 w-12 rounded-none">
@@ -265,9 +315,9 @@ export default function KnowledgePage() {
         <h1>岗位知识库</h1>
       </div>
 
-      <div className="grid h-[calc(100vh-36px)] grid-cols-[220px_minmax(0,1fr)] overflow-hidden">
-        <aside className="flex min-h-0 flex-col border-r border-gray-400/60 bg-gray-300/80">
-          <div className="flex items-center justify-between border-b border-gray-400/60 px-3 py-3">
+      <div className="knowledge-workspace">
+        <aside className="knowledge-sidebar">
+          <div className="flex items-center justify-between px-3 py-2">
             <span className="text-sm font-semibold">岗位档案</span>
             <Button
               type="button"
@@ -276,53 +326,149 @@ export default function KnowledgePage() {
               className="size-8"
               onClick={() => setCreateOpen(true)}
               aria-label="新建岗位档案"
-              title="新建岗位档案"
+              data-tooltip="新建岗位档案"
             >
               <Plus className="size-4" />
             </Button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          <div className="px-3 pb-2">
+            <Input
+              aria-label="搜索岗位档案"
+              placeholder="搜索岗位"
+              value={profileSearch}
+              onChange={(event) => setProfileSearch(event.target.value)}
+              className="h-8 bg-white text-xs"
+            />
+          </div>
+          <button
+            type="button"
+            className={`knowledge-library-link ${browseAll ? 'is-selected' : ''}`}
+            onClick={() => {
+              setBrowseAll(true)
+              setSelectedProfileId(null)
+              setTab('documents')
+              setDocumentFilter('all')
+            }}
+          >
+            <BookOpenText className="size-4" />
+            全部文档<span className="ml-auto text-xs">{snapshot.documents.length}</span>
+          </button>
+          <div className="knowledge-profile-list min-h-0 flex-1 overflow-y-auto p-2">
             {snapshot.profiles.length ? (
               <div className="space-y-1">
-                {snapshot.profiles.map((profile) => (
-                  <button
-                    key={profile.id}
-                    type="button"
-                    className={cn(
-                      'flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left transition-colors',
-                      selectedProfileId === profile.id
-                        ? 'bg-white/75 text-gray-950 shadow-sm'
-                        : 'text-gray-700 hover:bg-white/40'
-                    )}
-                    onClick={() => setSelectedProfileId(profile.id)}
-                  >
-                    <BriefcaseBusiness className="mt-0.5 size-4 shrink-0" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block break-words text-sm font-medium">{profile.name}</span>
-                      <span className="mt-0.5 block truncate text-xs text-gray-500">
-                        {[profile.company, profile.role].filter(Boolean).join(' · ') ||
-                          '尚未填写岗位信息'}
+                {snapshot.profiles
+                  .filter((profile) =>
+                    `${profile.name} ${profile.company} ${profile.role}`
+                      .toLowerCase()
+                      .includes(profileSearch.toLowerCase())
+                  )
+                  .map((profile) => (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      className={cn(
+                        'flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left transition-colors',
+                        selectedProfileId === profile.id
+                          ? 'knowledge-profile-selected'
+                          : 'text-gray-700 hover:bg-white/40'
+                      )}
+                      onClick={() => {
+                        setBrowseAll(false)
+                        setSelectedProfileId(profile.id)
+                        setDocumentFilter('all')
+                      }}
+                    >
+                      <BriefcaseBusiness className="mt-0.5 size-4 shrink-0" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block break-words text-sm font-medium">
+                          {profile.name}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-gray-500">
+                          {[profile.company, profile.role].filter(Boolean).join(' · ') ||
+                            `${profile.documentLinks.length} 篇资料`}
+                        </span>
                       </span>
-                    </span>
-                    {snapshot.activeProfileId === profile.id && (
-                      <span className="mt-0.5 shrink-0 rounded bg-green-700/10 px-1.5 py-0.5 text-[10px] text-green-800">
-                        当前
-                      </span>
-                    )}
-                  </button>
-                ))}
+                      {snapshot.activeProfileId === profile.id && (
+                        <span
+                          className="mt-0.5 shrink-0 text-emerald-700"
+                          aria-label="当前启用岗位"
+                        >
+                          <Check className="size-3.5" />
+                        </span>
+                      )}
+                    </button>
+                  ))}
               </div>
             ) : (
               <div className="px-3 py-8 text-center text-sm text-gray-600">
                 <BriefcaseBusiness className="mx-auto mb-2 size-6" />
-                先创建一个面试岗位
+                暂无岗位档案
               </div>
             )}
           </div>
         </aside>
 
-        <main className="min-h-0 overflow-y-auto bg-gray-200/85">
-          <div className="mx-auto max-w-4xl px-6 py-5">
+        <main className="knowledge-main">
+          <div className="knowledge-scope-header">
+            <div className="min-w-0 flex-1">
+              <h2 className="break-words text-base font-semibold">
+                {selectedProfile?.name ?? '共享文档库'}
+              </h2>
+              <p className="mt-1 text-xs text-neutral-500">
+                {selectedProfile
+                  ? `${selectedProfile.documentLinks.length} 篇关联资料`
+                  : `${snapshot.documents.length} 篇文档`}
+                {selectedProfile?.id === snapshot.activeProfileId && selectedProfile
+                  ? ' · 当前启用'
+                  : ''}
+              </p>
+            </div>
+            {selectedProfile && snapshot.activeProfileId !== selectedProfile.id && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={Boolean(busyAction)}
+                onClick={() => requestProfileActivation(selectedProfile.id)}
+              >
+                <Check className="size-3.5" />
+                启用岗位
+              </Button>
+            )}
+          </div>
+          <div
+            className="knowledge-tabs"
+            role="tablist"
+            aria-label="知识库视图"
+            onKeyDown={navigateKnowledgeTabs}
+          >
+            {(
+              [
+                { id: 'documents', label: '文档' },
+                { id: 'profile', label: '岗位资料' },
+                { id: 'diagnostic', label: '检索诊断' },
+                { id: 'builtin', label: '内置资料' }
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                id={`knowledge-tab-${item.id}`}
+                type="button"
+                role="tab"
+                aria-selected={tab === item.id}
+                tabIndex={tab === item.id ? 0 : -1}
+                aria-controls="knowledge-tabpanel"
+                onClick={() => setTab(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div
+            className="knowledge-main-content"
+            id="knowledge-tabpanel"
+            role="tabpanel"
+            aria-labelledby={`knowledge-tab-${tab}`}
+          >
             {errorMessage && (
               <div
                 role="alert"
@@ -342,295 +488,344 @@ export default function KnowledgePage() {
               </div>
             )}
 
-            <section
-              aria-labelledby="builtin-knowledge-heading"
-              className="mb-6 border-b border-gray-400/50 pb-5"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-sky-700/10 text-sky-800">
-                    <BookOpenText className="size-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 id="builtin-knowledge-heading" className="text-base font-semibold">
-                      前端开发通用知识
-                    </h2>
-                    <p className="mt-0.5 max-w-2xl text-xs leading-5 text-gray-600">
-                      覆盖常见前端面试主题。启用后，截图解题和文字对话会自动检索它；选择岗位时会与岗位资料合并。
-                    </p>
-                  </div>
-                </div>
-                <label
-                  htmlFor="builtin-knowledge-switch"
-                  className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 text-sm font-medium"
-                >
-                  <span>{snapshot.builtinFrontendKnowledgeEnabled ? '已参与检索' : '已关闭'}</span>
-                  <Switch
-                    id="builtin-knowledge-switch"
-                    checked={snapshot.builtinFrontendKnowledgeEnabled}
-                    onCheckedChange={requestBuiltinKnowledgeChange}
-                    disabled={Boolean(busyAction)}
-                    aria-label="启用前端开发通用知识"
-                  />
-                </label>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {BUILTIN_FRONTEND_KNOWLEDGE_TOPICS.map((topic) => (
-                  <div
-                    key={topic.id}
-                    className="min-w-0 rounded-md border border-gray-300/80 bg-white/45 px-3 py-2.5"
-                  >
-                    <p className="break-words text-sm font-medium text-gray-800">{topic.name}</p>
-                    <p className="mt-1 break-words text-xs leading-5 text-gray-600">
-                      {topic.summary}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 flex items-start gap-1.5 text-xs leading-5 text-gray-600">
-                <LockKeyhole className="mt-0.5 size-3.5 shrink-0" />
-                <span>这是随应用发布的只读资料包，不会复制到你的文档目录，也不能被删除。</span>
-              </p>
-            </section>
-
-            {selectedProfile ? (
-              <>
-                <section aria-labelledby="profile-heading">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h2 id="profile-heading" className="text-lg font-semibold">
-                        {selectedProfile.name}
+            {tab === 'diagnostic' && (
+              <RetrievalDiagnostic
+                key={`${selectedProfileId}:${snapshot.builtinFrontendKnowledgeEnabled}`}
+                profileId={selectedProfileId}
+                includeBuiltin={snapshot.builtinFrontendKnowledgeEnabled}
+              />
+            )}
+            {tab === 'builtin' && (
+              <section aria-labelledby="builtin-knowledge-heading" className="knowledge-builtin">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-sky-700/10 text-sky-800">
+                      <BookOpenText className="size-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <h2 id="builtin-knowledge-heading" className="text-base font-semibold">
+                        前端开发通用知识
                       </h2>
-                      <p className="mt-0.5 text-xs text-gray-600">
-                        公司、岗位和 JD 会参与每次本地检索
+                      <p className="mt-1 text-xs text-neutral-500">
+                        {BUILTIN_FRONTEND_KNOWLEDGE_TOPICS.length} 个主题 · 本地资料
                       </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {snapshot.activeProfileId !== selectedProfile.id && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => requestProfileActivation(selectedProfile.id)}
-                          disabled={Boolean(busyAction)}
-                        >
-                          设为当前岗位
-                        </Button>
-                      )}
+                  </div>
+                  <label
+                    htmlFor="builtin-knowledge-switch"
+                    className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 text-sm font-medium"
+                  >
+                    <span>
+                      {snapshot.builtinFrontendKnowledgeEnabled ? '已参与检索' : '已关闭'}
+                    </span>
+                    <Switch
+                      id="builtin-knowledge-switch"
+                      checked={snapshot.builtinFrontendKnowledgeEnabled}
+                      onCheckedChange={requestBuiltinKnowledgeChange}
+                      disabled={Boolean(busyAction)}
+                      aria-label="启用前端开发通用知识"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-4 divide-y divide-neutral-200">
+                  {BUILTIN_FRONTEND_KNOWLEDGE_TOPICS.map((topic) => (
+                    <div key={topic.id} className="flex min-w-0 items-center gap-3 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-sm font-medium text-gray-800">
+                          {topic.name}
+                        </p>
+                        <p className="mt-1 break-words text-xs leading-5 text-gray-600">
+                          {topic.summary}
+                        </p>
+                      </div>
                       <Button
-                        type="button"
-                        size="sm"
-                        onClick={saveProfile}
-                        disabled={Boolean(busyAction) || !draft.name.trim()}
-                      >
-                        <Save className="size-4" />
-                        保存
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
                         size="icon"
-                        className="size-8 text-red-700 hover:bg-red-100 hover:text-red-800"
-                        onClick={() => setDeleteProfile(selectedProfile)}
-                        aria-label="删除岗位档案"
-                        title="删除岗位档案"
+                        variant="ghost"
+                        aria-label={`预览${topic.name}`}
+                        onClick={() =>
+                          setPreview({
+                            id: `${BUILTIN_FRONTEND_KNOWLEDGE_DOCUMENT_PREFIX}${topic.id}`,
+                            name: topic.name
+                          })
+                        }
                       >
-                        <Trash2 className="size-4" />
+                        <Eye className="size-4" />
                       </Button>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label className="space-y-1.5 text-sm font-medium">
-                      档案名称
-                      <Input
-                        value={draft.name}
-                        onChange={(event) =>
-                          setDraft((value) => ({ ...value, name: event.target.value }))
-                        }
-                        maxLength={80}
-                        className="bg-white"
-                      />
-                    </label>
-                    <label className="space-y-1.5 text-sm font-medium">
-                      公司
-                      <div className="relative">
-                        <Building2 className="pointer-events-none absolute left-3 top-2.5 size-4 text-gray-400" />
-                        <Input
-                          value={draft.company}
-                          onChange={(event) =>
-                            setDraft((value) => ({ ...value, company: event.target.value }))
-                          }
-                          maxLength={120}
-                          className="bg-white pl-9"
-                        />
-                      </div>
-                    </label>
-                    <label className="space-y-1.5 text-sm font-medium sm:col-span-2">
-                      面试岗位
-                      <Input
-                        value={draft.role}
-                        onChange={(event) =>
-                          setDraft((value) => ({ ...value, role: event.target.value }))
-                        }
-                        maxLength={120}
-                        className="bg-white"
-                      />
-                    </label>
-                    <label className="space-y-1.5 text-sm font-medium sm:col-span-2">
-                      岗位描述（JD）
-                      <Textarea
-                        value={draft.jobDescription}
-                        onChange={(event) =>
-                          setDraft((value) => ({ ...value, jobDescription: event.target.value }))
-                        }
-                        maxLength={30_000}
-                        rows={6}
-                        className="resize-y bg-white leading-6"
-                        placeholder="粘贴岗位职责、技术要求和业务背景"
-                      />
-                    </label>
-                  </div>
-                </section>
-
-                <div className="my-6 border-t border-gray-400/50" />
-              </>
-            ) : (
-              <section className="mb-6 py-5 text-center">
-                <BriefcaseBusiness className="mx-auto mb-2 size-7 text-gray-500" />
-                <h2 className="font-semibold">创建岗位后即可关联资料</h2>
-                <p className="mt-1 text-sm text-gray-600">
-                  共享文档也可以先导入，之后再关联到岗位。
-                </p>
-                <Button className="mt-3" size="sm" onClick={() => setCreateOpen(true)}>
-                  <Plus className="size-4" />
-                  新建岗位
-                </Button>
+                  ))}
+                </div>
               </section>
             )}
 
-            <section aria-labelledby="documents-heading">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 id="documents-heading" className="text-base font-semibold">
-                    共享文档库
-                  </h2>
-                  <p className="mt-0.5 text-xs text-gray-600">
-                    支持 PDF、DOCX、TXT、Markdown；单文件不超过 10 MB
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void importDocuments()}
-                  disabled={Boolean(busyAction)}
-                >
-                  <Upload className="size-4" />
-                  导入文档
-                </Button>
-              </div>
-
-              <div className="overflow-hidden rounded-md border border-gray-400/60 bg-white/70">
-                {snapshot.documents.length ? (
-                  <div className="divide-y divide-gray-300">
-                    {snapshot.documents.map((document) => {
-                      const link = selectedProfile?.documentLinks.find(
-                        (candidate) => candidate.documentId === document.id
-                      )
-                      const progress = importProgress[document.id]
-                      const isKey = link?.priority === 'key'
-                      return (
-                        <div
-                          key={document.id}
-                          className="flex min-w-0 items-center gap-3 px-3 py-2.5"
-                        >
-                          <Checkbox
-                            checked={Boolean(link)}
-                            disabled={!selectedProfile || Boolean(busyAction)}
-                            onCheckedChange={(checked) =>
-                              setDocumentLinked(document.id, checked === true)
-                            }
-                            aria-label={`${link ? '取消关联' : '关联'}文档 ${document.name}`}
-                          />
-                          <FileText className="size-4 shrink-0 text-gray-500" />
-                          <div className="min-w-0 flex-1">
-                            <p className="break-words text-sm font-medium">{document.name}</p>
-                            <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-gray-500">
-                              <span>{formatFileSize(document.size)}</span>
-                              <span>
-                                {progress?.stage === 'extracting'
-                                  ? '正在提取文本'
-                                  : getStatusLabel(document)}
-                              </span>
-                              {document.error && (
-                                <span className="text-red-700">{document.error}</span>
-                              )}
-                            </div>
-                          </div>
-                          {link && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className={cn(
-                                'size-8 shrink-0',
-                                isKey ? 'text-amber-600 hover:text-amber-700' : 'text-gray-400'
-                              )}
-                              onClick={() => toggleDocumentPriority(document.id, isKey)}
-                              disabled={Boolean(busyAction)}
-                              aria-label={isKey ? '取消重点资料' : '设为重点资料'}
-                              title={isKey ? '取消重点资料' : '设为重点资料'}
-                            >
-                              <Star className={cn('size-4', isKey && 'fill-current')} />
-                            </Button>
-                          )}
-                          {document.status === 'error' && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 shrink-0"
-                              onClick={() => void retryDocument(document.id)}
-                              disabled={Boolean(busyAction)}
-                              aria-label="重新处理文档"
-                              title="重新处理文档"
-                            >
-                              <RefreshCw className="size-4" />
-                            </Button>
-                          )}
+            {tab === 'profile' &&
+              (selectedProfile ? (
+                <>
+                  <section aria-labelledby="profile-heading">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 id="profile-heading" className="text-lg font-semibold">
+                          {selectedProfile.name}
+                        </h2>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {snapshot.activeProfileId !== selectedProfile.id && (
                           <Button
                             type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 shrink-0 text-red-700 hover:bg-red-100 hover:text-red-800"
-                            onClick={() => setDeleteDocument(document)}
-                            disabled={document.status === 'processing' || Boolean(busyAction)}
-                            aria-label="永久删除文档"
-                            title="永久删除文档"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => requestProfileActivation(selectedProfile.id)}
+                            disabled={Boolean(busyAction)}
                           >
-                            <Trash2 className="size-4" />
+                            设为当前岗位
                           </Button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="px-4 py-10 text-center text-sm text-gray-600">
-                    <FileText className="mx-auto mb-2 size-6" />
-                    尚未导入文档
-                  </div>
-                )}
-              </div>
+                        )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={saveProfile}
+                          disabled={Boolean(busyAction) || !draft.name.trim()}
+                        >
+                          <Save className="size-4" />
+                          保存
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-red-700 hover:bg-red-100 hover:text-red-800"
+                          onClick={() => setDeleteProfile(selectedProfile)}
+                          aria-label="删除岗位档案"
+                          data-tooltip="删除岗位档案"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
 
-              <p className="mt-3 text-xs leading-5 text-gray-600">
-                文档副本、提取片段和索引保存在本机应用数据目录，首版不进行磁盘加密。回答时只有命中的少量片段会发送给当前配置的
-                AI 服务。
-              </p>
-            </section>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="space-y-1.5 text-sm font-medium">
+                        档案名称
+                        <Input
+                          value={draft.name}
+                          onChange={(event) =>
+                            setDraft((value) => ({ ...value, name: event.target.value }))
+                          }
+                          maxLength={80}
+                          className="bg-white"
+                        />
+                      </label>
+                      <label className="space-y-1.5 text-sm font-medium">
+                        公司
+                        <div className="relative">
+                          <Building2 className="pointer-events-none absolute left-3 top-2.5 size-4 text-gray-400" />
+                          <Input
+                            value={draft.company}
+                            onChange={(event) =>
+                              setDraft((value) => ({ ...value, company: event.target.value }))
+                            }
+                            maxLength={120}
+                            className="bg-white pl-9"
+                          />
+                        </div>
+                      </label>
+                      <label className="space-y-1.5 text-sm font-medium sm:col-span-2">
+                        面试岗位
+                        <Input
+                          value={draft.role}
+                          onChange={(event) =>
+                            setDraft((value) => ({ ...value, role: event.target.value }))
+                          }
+                          maxLength={120}
+                          className="bg-white"
+                        />
+                      </label>
+                      <label className="space-y-1.5 text-sm font-medium sm:col-span-2">
+                        岗位描述（JD）
+                        <Textarea
+                          value={draft.jobDescription}
+                          onChange={(event) =>
+                            setDraft((value) => ({ ...value, jobDescription: event.target.value }))
+                          }
+                          maxLength={30_000}
+                          rows={8}
+                          className="resize-y bg-white leading-6"
+                          placeholder="粘贴岗位职责、技术要求和业务背景"
+                        />
+                      </label>
+                    </div>
+                  </section>
+
+                  <div className="my-6 border-t border-gray-400/50" />
+                </>
+              ) : (
+                <section className="mb-6 py-5 text-center">
+                  <BriefcaseBusiness className="mx-auto mb-2 size-7 text-gray-500" />
+                  <h2 className="font-semibold">未选择岗位</h2>
+                  <Button className="mt-3" size="sm" onClick={() => setCreateOpen(true)}>
+                    <Plus className="size-4" />
+                    新建岗位
+                  </Button>
+                </section>
+              ))}
+
+            {tab === 'documents' && (
+              <section aria-labelledby="documents-heading">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 id="documents-heading" className="text-base font-semibold">
+                      文档资料
+                    </h2>
+                    <p className="mt-0.5 text-xs text-gray-600">
+                      支持 PDF、DOCX、TXT、Markdown；单文件不超过 10 MB
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void importDocuments()}
+                    disabled={Boolean(busyAction)}
+                  >
+                    <Upload className="size-4" />
+                    导入文档
+                  </Button>
+                </div>
+
+                <div className="knowledge-document-filters">
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-neutral-400" />
+                    <Input
+                      aria-label="搜索知识库文档"
+                      placeholder="搜索文档名称"
+                      value={documentSearch}
+                      onChange={(event) => setDocumentSearch(event.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                  <Select value={documentFilter} onValueChange={setDocumentFilter}>
+                    <SelectTrigger aria-label="筛选知识库文档" className="w-32 shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部文档</SelectItem>
+                      {selectedProfile && (
+                        <>
+                          <SelectItem value="linked">已关联</SelectItem>
+                          <SelectItem value="unlinked">未关联</SelectItem>
+                        </>
+                      )}
+                      <SelectItem value="error">处理失败</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="knowledge-documents">
+                  {visibleDocuments.length ? (
+                    <div className="divide-y divide-gray-300">
+                      {visibleDocuments.map((document) => {
+                        const link = selectedProfile?.documentLinks.find(
+                          (candidate) => candidate.documentId === document.id
+                        )
+                        const progress = importProgress[document.id]
+                        const isKey = link?.priority === 'key'
+                        return (
+                          <div key={document.id} className="knowledge-document-row">
+                            <Checkbox
+                              checked={Boolean(link)}
+                              disabled={!selectedProfile || Boolean(busyAction)}
+                              onCheckedChange={(checked) =>
+                                setDocumentLinked(document.id, checked === true)
+                              }
+                              aria-label={`${link ? '取消关联' : '关联'}文档 ${document.name}`}
+                            />
+                            <FileText className="size-4 shrink-0 text-gray-500" />
+                            <div className="min-w-0 flex-1">
+                              <p className="break-words text-sm font-medium">{document.name}</p>
+                              <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-gray-500">
+                                <span>{formatFileSize(document.size)}</span>
+                                <span>
+                                  {progress?.stage === 'extracting'
+                                    ? '正在提取文本'
+                                    : getStatusLabel(document)}
+                                </span>
+                                {document.error && (
+                                  <span className="text-red-700">{document.error}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="knowledge-document-actions">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-8"
+                                disabled={document.status !== 'ready'}
+                                aria-label={`预览文档 ${document.name}`}
+                                onClick={() => setPreview(document)}
+                              >
+                                <Eye className="size-4" />
+                              </Button>
+                              {link && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className={cn(
+                                    'size-8 shrink-0',
+                                    isKey ? 'text-amber-600 hover:text-amber-700' : 'text-gray-400'
+                                  )}
+                                  onClick={() => toggleDocumentPriority(document.id, isKey)}
+                                  disabled={Boolean(busyAction)}
+                                  aria-label={isKey ? '取消重点资料' : '设为重点资料'}
+                                  data-tooltip={isKey ? '取消重点资料' : '设为重点资料'}
+                                >
+                                  <Star className={cn('size-4', isKey && 'fill-current')} />
+                                </Button>
+                              )}
+                              {document.status === 'error' && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8 shrink-0"
+                                  onClick={() => void retryDocument(document.id)}
+                                  disabled={Boolean(busyAction)}
+                                  aria-label="重新处理文档"
+                                  data-tooltip="重新处理文档"
+                                >
+                                  <RefreshCw className="size-4" />
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 shrink-0 text-red-700 hover:bg-red-100 hover:text-red-800"
+                                onClick={() => setDeleteDocument(document)}
+                                disabled={document.status === 'processing' || Boolean(busyAction)}
+                                aria-label="永久删除文档"
+                                data-tooltip="永久删除文档"
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-10 text-center text-sm text-gray-600">
+                      <FileText className="mx-auto mb-2 size-6" />
+                      {snapshot.documents.length ? '没有匹配的文档' : '尚未导入文档'}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
           </div>
         </main>
       </div>
+
+      <DocumentPreview document={preview} onClose={() => setPreview(null)} />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>

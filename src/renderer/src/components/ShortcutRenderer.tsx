@@ -8,6 +8,7 @@ export default function ShortcutRenderer({
   shortcut: string
   className?: string
 }) {
+  if (!shortcut) return <span className="text-xs text-neutral-400">未绑定</span>
   const keys = getShortcutAcceleratorDisplay(shortcut).split('+')
   return (
     <span

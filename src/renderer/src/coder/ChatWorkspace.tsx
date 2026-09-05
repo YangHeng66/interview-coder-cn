@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import {
   AudioLines,
   Bot,
@@ -8,7 +8,6 @@ import {
   MicOff,
   OctagonX,
   Paperclip,
-  Pause,
   Play,
   RotateCcw,
   Send,
@@ -19,6 +18,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { KnowledgeSources } from '@/components/KnowledgeSources'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { chooseLocalFiles } from '@/lib/local-file-picker'
 import { useChatStore, type ChatMessage } from '@/lib/store/chat'
 import { useKnowledgeStore } from '@/lib/store/knowledge'
 import {
@@ -27,8 +27,9 @@ import {
   useSettingsStore
 } from '@/lib/store/settings'
 import { useTranscriptionStore } from '@/lib/store/transcription'
+import { TranscriptionBar } from './TranscriptionBar'
 import {
-  CHAT_DOCUMENT_ACCEPT,
+  CHAT_DOCUMENT_EXTENSIONS,
   CHAT_DOCUMENT_MAX_FILES,
   CHAT_DOCUMENT_MAX_FILE_BYTES,
   CHAT_DOCUMENT_MAX_TOTAL_CHARACTERS,
@@ -142,7 +143,7 @@ function findRequestUserMessage(
   return undefined
 }
 
-function ChatMessageItem({
+const ChatMessageItem = memo(function ChatMessageItem({
   message,
   previousUserMessage
 }: {
@@ -228,7 +229,7 @@ function ChatMessageItem({
       </div>
     </div>
   )
-}
+})
 
 function ChatComposer({
   isLoading,
@@ -243,8 +244,7 @@ function ChatComposer({
 }) {
   const [draft, setDraft] = useState('')
   const [documents, setDocuments] = useState<ChatDocument[]>([])
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { isTranscribing, transcriptionText } = useTranscriptionStore()
+  const isTranscribing = useTranscriptionStore((s) => s.isTranscribing)
   const transcriptionAutoReply = useSettingsStore((state) => state.transcriptionAutoReply)
   const autoReplyQueueCount = useChatStore((state) => state.autoReplyQueueCount)
   const transcriptionConfigError = useSettingsStore((state) =>
@@ -262,10 +262,16 @@ function ChatComposer({
     }
   }
 
-  const addDocuments = async (files: FileList | null) => {
-    if (!files?.length) return
+  const addDocuments = async () => {
     try {
-      const candidates = Array.from(files)
+      const paths = await chooseLocalFiles({
+        title: '选择对话文档',
+        mode: 'files',
+        extensions: CHAT_DOCUMENT_EXTENSIONS,
+        multiple: true
+      })
+      if (!paths.length) return
+      const candidates = await window.api.readChatDocuments(paths)
       if (documents.length + candidates.length > CHAT_DOCUMENT_MAX_FILES) {
         setErrorMessage(`一次最多上传 ${CHAT_DOCUMENT_MAX_FILES} 个文档`)
         return
@@ -282,16 +288,16 @@ function ChatComposer({
           return
         }
 
-        const text = (await file.text()).replace(/^\uFEFF/, '')
+        const text = file.text
         if (!text.trim()) {
           setErrorMessage(`文档“${file.name}”没有可读取的文本`)
           return
         }
 
         nextDocuments.push({
-          id: `${file.name}-${file.size}-${file.lastModified}`,
+          id: file.id,
           name: file.name,
-          mediaType: file.type || 'text/plain',
+          mediaType: file.mediaType,
           size: file.size,
           text
         })
@@ -314,8 +320,6 @@ function ChatComposer({
     } catch (error) {
       console.error('Failed to read chat document:', error)
       setErrorMessage('读取文档失败，请检查文件是否可访问')
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -348,59 +352,11 @@ function ChatComposer({
           </div>
         )}
 
-        {(isTranscribing || isPaused || transcriptionText) && (
-          <div className="mb-2 flex min-h-8 items-start gap-2 border-b border-white/10 pb-2">
-            <Mic
-              className={`mt-1 size-4 shrink-0 ${
-                isTranscribing ? 'text-green-300' : isPaused ? 'text-amber-300' : 'text-gray-300'
-              }`}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="mb-0.5 flex items-center gap-2 text-[11px] text-gray-300/65">
-                <span>{isTranscribing ? '监听中' : isPaused ? '已暂停' : '待发送'}</span>
-                {transcriptionAutoReply && <span className="text-green-200/75">自动回答</span>}
-                {isLoading && <span className="text-blue-200/75">回答生成中</span>}
-              </div>
-              <div className="max-h-[4.2em] overflow-y-auto whitespace-pre-wrap break-words text-sm leading-[1.4em] text-gray-100/85">
-                {transcriptionText || (isPaused ? '语音识别已暂停' : '等待语音输入...')}
-              </div>
-            </div>
-            {isTranscribing && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-7 text-amber-100 hover:bg-amber-400/15 hover:text-amber-50"
-                onClick={onPauseTranscription}
-                aria-label="暂停语音识别"
-                title="暂停语音识别"
-              >
-                <Pause className="size-3.5" />
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7 text-gray-100 hover:bg-white/10 hover:text-white"
-              onClick={() => void window.api.sendTranscriptionToChat()}
-              disabled={!transcriptionText.trim()}
-              aria-label="发送语音转录"
-            >
-              <Send className="size-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7 text-gray-300 hover:bg-white/10 hover:text-white"
-              onClick={() => void window.api.triggerAction('clearTranscription')}
-              aria-label="清除语音转录"
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-          </div>
-        )}
+        <TranscriptionBar
+          isPaused={isPaused}
+          onPause={onPauseTranscription}
+          onResume={onToggleTranscription}
+        />
 
         {transcriptionAutoReply && autoReplyQueueCount > 0 && (
           <div className="mb-2 flex min-h-8 items-center gap-2 border-b border-white/10 pb-2 text-xs text-gray-200/75">
@@ -412,7 +368,6 @@ function ChatComposer({
               className="size-7 text-gray-300 hover:bg-white/10 hover:text-white"
               onClick={() => void window.api.clearAutoReplyQueue()}
               aria-label="清空待处理语音"
-              title="清空待处理语音"
             >
               <ListX className="size-3.5" />
             </Button>
@@ -420,15 +375,6 @@ function ChatComposer({
         )}
 
         <div className="flex items-end gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept={CHAT_DOCUMENT_ACCEPT}
-            className="sr-only"
-            onChange={(event) => void addDocuments(event.target.files)}
-            aria-label="选择文档"
-          />
           <Button
             type="button"
             variant="ghost"
@@ -440,7 +386,7 @@ function ChatComposer({
             aria-label={
               isPaused ? '继续语音识别' : isTranscribing ? '停止语音识别' : '开始语音识别'
             }
-            title={
+            data-tooltip={
               transcriptionConfigError ??
               (isPaused
                 ? '继续语音识别'
@@ -459,10 +405,11 @@ function ChatComposer({
           </Button>
 
           <Textarea
+            id="chat-input"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                 event.preventDefault()
                 void sendDraft()
               }
@@ -503,7 +450,7 @@ function ChatComposer({
             variant="ghost"
             size="icon"
             className="size-9 shrink-0 text-gray-100 hover:bg-white/10 hover:text-white"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => void addDocuments()}
             aria-label="上传文档"
           >
             <Paperclip className="size-4" />

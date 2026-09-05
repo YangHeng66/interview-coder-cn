@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import appConfig from '../../../../../app.config.json'
 import { persist } from 'zustand/middleware'
 import codingPrompt from './prompts/coding.md?raw'
 import englishExamPrompt from './prompts/english-exam.md?raw'
@@ -113,6 +114,11 @@ function normalizeThinkingLevels(value: unknown): Record<string, ThinkingLevel> 
 }
 
 export interface Settings {
+  readerFontSize: number
+  readerLineHeight: number
+  screenshotsCollapsed: boolean
+  knowledgeQueryRewrite: boolean
+  requestHistoryTurns: number
   // theme: 'light' | 'dark'an
   apiProtocol: ApiProtocol
   apiBaseURL: string
@@ -176,6 +182,11 @@ interface SettingsStore extends Settings {
 }
 
 const defaultSettings: Settings = {
+  readerFontSize: appConfig.interface.fontSize,
+  readerLineHeight: appConfig.interface.lineHeight,
+  screenshotsCollapsed: appConfig.interface.screenshotsCollapsed,
+  knowledgeQueryRewrite: appConfig.performance.knowledgeQueryRewrite,
+  requestHistoryTurns: appConfig.performance.requestHistoryTurns,
   apiProtocol: 'chat-completions',
   apiBaseURL: '',
   apiKey: '',

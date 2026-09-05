@@ -44,6 +44,7 @@
   },
   "homepage": "https://github.com/YangHeng66/interview-coder-cn#readme",
   "dependencies": {
+    "@ai-sdk/anthropic": "2.0.16",
     "@ai-sdk/openai": "^2.0.16",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",

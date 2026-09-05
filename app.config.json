@@ -1,0 +1,87 @@
+{
+  "interface": {
+    "fontSize": 14,
+    "fontSizeMin": 12,
+    "fontSizeMax": 22,
+    "fontSizeStep": 1,
+    "lineHeight": 1.7,
+    "lineHeightMin": 1.3,
+    "lineHeightMax": 2.2,
+    "lineHeightStep": 0.1,
+    "screenshotsCollapsed": false,
+    "moveStep": 200,
+    "opacityStep": 0.05
+  },
+  "performance": {
+    "streamFlushIntervalMs": 40,
+    "knowledgeQueryRewrite": false,
+    "knowledgeRewriteTimeoutMs": 8000,
+    "knowledgeRewriteMaxTokens": 300,
+    "requestHistoryTurns": 0
+  },
+  "diagnostics": {
+    "timeoutMs": 30000,
+    "maxOutputTokens": 512,
+    "textPrompt": "请只回复：连接成功",
+    "imagePrompt": "请用一句话描述这张图片的颜色。",
+    "imageSize": 64,
+    "imageColor": "#dc2626"
+  },
+  "sessions": {
+    "saveDelayMs": 500,
+    "directory": "conversations",
+    "exportDirectory": "conversation-exports",
+    "titleLength": 32
+  },
+  "protocolPaths": {
+    "chat-completions": "/chat/completions",
+    "responses": "/responses",
+    "messages": "/messages"
+  },
+  "messagesThinkingBudgets": {
+    "minimal": 1024,
+    "low": 2048,
+    "medium": 4096,
+    "high": 8192,
+    "xhigh": 12288,
+    "max": 16384
+  },
+  "messagesMaxOutputTokens": 32768,
+  "knowledge": {
+    "chunkTargetLength": 1200,
+    "chunkOverlapLength": 200,
+    "contextCharacterLimit": 12000,
+    "maxChunks": 6,
+    "jobDescriptionCharacterLimit": 4000,
+    "jobDescriptionBudgetRatio": 0.35,
+    "minimumExcerptCharacters": 120,
+    "contextWrapperReserve": 450,
+    "documentNameBoost": 1.5,
+    "keyDocumentBoost": 1.2,
+    "minimumRelativeScore": 0.2,
+    "fixedBackground": "none",
+    "diagnosticCandidateLimit": 20,
+    "indexPrewarmDelayMs": 100
+  },
+  "transcription": {
+    "sampleRate": 16000,
+    "frameDurationMs": 100,
+    "startupBufferMs": 5000,
+    "connectionTimeoutMs": 10000,
+    "finishTimeoutMs": 5000,
+    "partialIdleMs": 800,
+    "autoReplyMergeMs": 0,
+    "autoReplyMaxBatches": 10,
+    "autoReplyMaxCharacters": 20000,
+    "volcengineEndWindowMs": 1000,
+    "meterFloorDb": -60,
+    "scrollFollowThresholdPx": 24
+  },
+  "modelThinkingRules": [
+    {
+      "pattern": "^gpt-6-astra(?:$|-)",
+      "levels": ["auto", "low", "medium", "high", "xhigh", "max"],
+      "migrations": { "minimal": "low", "none": "low" }
+    }
+  ]
+}

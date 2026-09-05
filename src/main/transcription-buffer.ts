@@ -2,6 +2,7 @@ export class TranscriptionBuffer {
   private finalizedText = ''
   private currentPartial = ''
   private consumedPartialLength = 0
+  private confirmedPartialLength = 0
 
   updatePartial(text: string): void {
     // Providers differ on whether a new partial result contains the whole
@@ -12,6 +13,7 @@ export class TranscriptionBuffer {
       this.consumedPartialLength = 0
     }
     this.currentPartial = text
+    this.confirmedPartialLength = Math.min(this.confirmedPartialLength, text.length)
   }
 
   finishSentence(text: string): void {
@@ -21,12 +23,27 @@ export class TranscriptionBuffer {
     this.finalizedText += text.slice(offset)
     this.currentPartial = ''
     this.consumedPartialLength = 0
+    this.confirmedPartialLength = 0
   }
 
   finalizeCurrentPartial(): void {
     this.finalizedText += this.currentPartial.slice(this.consumedPartialLength)
     this.currentPartial = ''
     this.consumedPartialLength = 0
+    this.confirmedPartialLength = 0
+  }
+
+  confirmPartial(): void {
+    this.confirmedPartialLength = this.currentPartial.length
+  }
+
+  getSegments(): { confirmedText: string; partialText: string } {
+    const boundary = Math.max(this.consumedPartialLength, this.confirmedPartialLength)
+    return {
+      confirmedText:
+        this.finalizedText + this.currentPartial.slice(this.consumedPartialLength, boundary),
+      partialText: this.currentPartial.slice(boundary)
+    }
   }
 
   getText(): string {

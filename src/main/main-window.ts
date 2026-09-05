@@ -4,12 +4,8 @@ import { is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createToolbarWindow } from './toolbar-window'
 
-export function applyContentProtection(window: BrowserWindow, forceReset = false): void {
+export function applyContentProtection(window: BrowserWindow): void {
   if (!window || window.isDestroyed()) return
-
-  if (forceReset && process.platform === 'win32') {
-    window.setContentProtection(false)
-  }
 
   window.setContentProtection(true)
 }
@@ -37,6 +33,7 @@ export function createWindow(): void {
 
   // Store reference to mainWindow globally
   global.mainWindow = mainWindow
+  applyContentProtection(mainWindow)
   // The toolbar follows the main window's position and visibility on its own
   createToolbarWindow(mainWindow)
 

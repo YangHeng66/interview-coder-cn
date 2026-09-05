@@ -1,0 +1,119 @@
+{
+  "hideOrShowMainWindow": {
+    "label": "显示 / 隐藏窗口",
+    "key": "Primary+H",
+    "category": "窗口",
+    "scope": "global"
+  },
+  "ignoreOrEnableMouse": {
+    "label": "鼠标穿透",
+    "key": "Primary+M",
+    "category": "窗口",
+    "scope": "global"
+  },
+  "increaseOpacity": {
+    "label": "提高不透明度",
+    "key": "Primary+Shift+Up",
+    "category": "窗口",
+    "scope": "global"
+  },
+  "decreaseOpacity": {
+    "label": "降低不透明度",
+    "key": "Primary+Shift+Down",
+    "category": "窗口",
+    "scope": "global"
+  },
+  "takeScreenshot": {
+    "label": "截图并新建对话",
+    "key": "Primary+Enter",
+    "category": "截图与回答",
+    "scope": "global"
+  },
+  "appendScreenshot": {
+    "label": "追加截图",
+    "key": "Primary+Shift+Enter",
+    "category": "截图与回答",
+    "scope": "global"
+  },
+  "stopSolutionStream": {
+    "label": "停止生成",
+    "key": "Primary+.",
+    "category": "截图与回答",
+    "scope": "global"
+  },
+  "toggleTranscription": {
+    "label": "开始 / 停止语音识别",
+    "key": "Primary+T",
+    "category": "语音",
+    "scope": "global"
+  },
+  "pauseResumeTranscription": {
+    "label": "暂停 / 继续语音识别",
+    "key": "",
+    "category": "语音",
+    "scope": "global"
+  },
+  "clearTranscription": {
+    "label": "清除转录文本",
+    "key": "Primary+Shift+T",
+    "category": "语音",
+    "scope": "global"
+  },
+  "sendTranscriptionToChat": {
+    "label": "发送语音到文字对话",
+    "key": "CommandOrControl+Alt+Enter",
+    "category": "语音",
+    "scope": "global"
+  },
+  "pageUp": {
+    "label": "向上翻页",
+    "key": "CommandOrControl+J",
+    "category": "阅读",
+    "scope": "global"
+  },
+  "pageDown": {
+    "label": "向下翻页",
+    "key": "CommandOrControl+K",
+    "category": "阅读",
+    "scope": "global"
+  },
+  "moveMainWindowUp": {
+    "label": "窗口上移",
+    "key": "CommandOrControl+Up",
+    "category": "窗口移动",
+    "scope": "global"
+  },
+  "moveMainWindowDown": {
+    "label": "窗口下移",
+    "key": "CommandOrControl+Down",
+    "category": "窗口移动",
+    "scope": "global"
+  },
+  "moveMainWindowLeft": {
+    "label": "窗口左移",
+    "key": "CommandOrControl+Left",
+    "category": "窗口移动",
+    "scope": "global"
+  },
+  "moveMainWindowRight": {
+    "label": "窗口右移",
+    "key": "CommandOrControl+Right",
+    "category": "窗口移动",
+    "scope": "global"
+  },
+  "switchAssistantMode": {
+    "label": "切换截图 / 文字模式",
+    "key": "",
+    "category": "阅读",
+    "scope": "global"
+  },
+  "increaseFontSize": { "label": "增大字号", "key": "", "category": "阅读", "scope": "global" },
+  "decreaseFontSize": { "label": "减小字号", "key": "", "category": "阅读", "scope": "global" },
+  "toggleScreenshots": {
+    "label": "折叠 / 展开截图",
+    "key": "",
+    "category": "阅读",
+    "scope": "global"
+  },
+  "focusChatInput": { "label": "聚焦文字输入框", "key": "", "category": "阅读", "scope": "local" }
+}

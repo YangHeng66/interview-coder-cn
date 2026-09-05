@@ -1,4 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Image, ChevronDown, ChevronRight } from 'lucide-react'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { useSettingsStore } from '@/lib/store/settings'
+import { createStreamBatch } from '@/lib/stream-batch'
 import { useShortcutsStore } from '@/lib/store/shortcuts'
 import { useSolutionStore } from '@/lib/store/solution'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
@@ -11,6 +15,8 @@ const SCROLL_OFFSET = 120
 export function AppContent() {
   const {
     screenshotData,
+    recentScreenshots,
+    setRecentScreenshots,
     solutionChunks,
     errorMessage,
     setScreenshotData,
@@ -20,11 +26,14 @@ export function AppContent() {
     clearSolution
   } = useSolutionStore()
 
-  const [recentScreenshots, setRecentScreenshots] = useState<string[]>([])
+  const [preview, setPreview] = useState<string | null>(null)
+  const { screenshotsCollapsed, updateSetting } = useSettingsStore()
+  const batch = useMemo(() => createStreamBatch(addSolutionChunk), [addSolutionChunk])
   const visionContext = useKnowledgeStore((state) => state.visionContext)
   const clearVisionContext = useKnowledgeStore((state) => state.clearVisionContext)
 
   useEffect(() => {
+    window.addEventListener('conversation-restored', batch.clear)
     // Listen for screenshot events (latest)
     window.api.onScreenshotTaken((data: string) => {
       setScreenshotData(data)
@@ -37,6 +46,7 @@ export function AppContent() {
 
     // New session clear (pictures + answers)
     window.api.onSolutionClear(() => {
+      batch.clear()
       clearSolution()
       setRecentScreenshots([])
       setScreenshotData(null)
@@ -46,7 +56,7 @@ export function AppContent() {
 
     // Listen for solution chunks
     window.api.onSolutionChunk((chunk: string) => {
-      addSolutionChunk(chunk)
+      batch.push(chunk)
     })
 
     // AI loading
@@ -55,11 +65,14 @@ export function AppContent() {
       setErrorMessage(null) // Clear error when new request starts
     })
     window.api.onAiLoadingEnd(() => {
+      batch.flush()
       setIsLoading(false)
     })
 
     // Cleanup listeners on unmount
     return () => {
+      batch.clear()
+      window.removeEventListener('conversation-restored', batch.clear)
       window.api.removeScreenshotListener()
       window.api.removeScreenshotsUpdatedListener()
       window.api.removeSolutionChunkListener()
@@ -73,17 +86,22 @@ export function AppContent() {
     setIsLoading,
     addSolutionChunk,
     setErrorMessage,
-    clearVisionContext
+    clearVisionContext,
+    batch,
+    setRecentScreenshots
   ])
 
   useEffect(() => {
     window.api.onSolutionComplete(() => {
+      batch.flush()
       setIsLoading(false)
     })
     window.api.onSolutionStopped(() => {
+      batch.flush()
       setIsLoading(false)
     })
     window.api.onSolutionError((message: string) => {
+      batch.flush()
       setIsLoading(false)
       setErrorMessage(message)
     })
@@ -92,7 +110,7 @@ export function AppContent() {
       window.api.removeSolutionStoppedListener()
       window.api.removeSolutionErrorListener()
     }
-  }, [setIsLoading, setErrorMessage])
+  }, [setIsLoading, setErrorMessage, batch])
 
   useEffect(() => {
     window.api.onScrollPageUp(() => {
@@ -147,7 +165,7 @@ export function AppContent() {
           <button
             onClick={() => setErrorMessage(null)}
             className="text-red-400/80 hover:text-red-300 flex-shrink-0"
-            title="关闭"
+            aria-label="关闭错误提示"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -162,29 +180,74 @@ export function AppContent() {
       )}
 
       {/* Screenshot Gallery */}
-      {recentScreenshots.length > 0 ? (
-        <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
-          {recentScreenshots.map((data, index) => (
-            <img
-              key={index}
-              src={`data:image/png;base64,${data}`}
-              alt={`Screenshot ${index + 1}`}
-              className="w-40 h-auto flex-shrink-0 border border-gray-600 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
-              title={`第 ${index + 1} 张截图`}
-            />
-          ))}
-        </div>
-      ) : screenshotData ? (
-        <div className="mb-4">
-          <img
-            src={`data:image/png;base64,${screenshotData}`}
-            alt="Screenshot"
-            className="w-40 h-auto border border-gray-600 rounded-lg shadow-lg"
-          />
-        </div>
-      ) : (
-        <ShortcutTip />
+      {(recentScreenshots.length > 0 || screenshotData) && (
+        <button
+          type="button"
+          className="mb-2 flex items-center gap-2 text-xs text-neutral-300"
+          aria-expanded={!screenshotsCollapsed}
+          onClick={() => updateSetting('screenshotsCollapsed', !screenshotsCollapsed)}
+        >
+          {screenshotsCollapsed ? (
+            <ChevronRight className="size-3.5" />
+          ) : (
+            <ChevronDown className="size-3.5" />
+          )}
+          <Image className="size-3.5" />
+          截图 {recentScreenshots.length || 1}
+        </button>
       )}
+      {!screenshotsCollapsed && (
+        <>
+          {recentScreenshots.length > 0 ? (
+            <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+              {recentScreenshots.map((data, index) => (
+                <button
+                  type="button"
+                  key={index}
+                  className="shrink-0"
+                  aria-label={`查看第 ${index + 1} 张截图`}
+                  onClick={() => setPreview(data)}
+                >
+                  <img
+                    key={index}
+                    src={`data:image/png;base64,${data}`}
+                    alt={`Screenshot ${index + 1}`}
+                    className="h-20 w-32 object-contain border border-white/15 rounded bg-black/20"
+                  />
+                </button>
+              ))}
+            </div>
+          ) : screenshotData ? (
+            <div className="mb-4">
+              <img
+                src={`data:image/png;base64,${screenshotData}`}
+                alt="Screenshot"
+                className="w-40 h-auto border border-gray-600 rounded-lg shadow-lg"
+              />
+            </div>
+          ) : (
+            <ShortcutTip />
+          )}
+        </>
+      )}
+      {screenshotsCollapsed && !screenshotData && <ShortcutTip />}
+      <Dialog
+        open={preview !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreview(null)
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-4xl">
+          <DialogTitle>截图</DialogTitle>
+          {preview && (
+            <img
+              src={`data:image/png;base64,${preview}`}
+              alt="截图原图"
+              className="h-auto w-full"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Solution Display */}
       <KnowledgeSources context={visionContext} className="mb-2" />

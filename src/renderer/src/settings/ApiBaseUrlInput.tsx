@@ -55,7 +55,7 @@ export function ApiBaseUrlInput({
             type="button"
             disabled={disabled || historyItems.length === 0}
             aria-label="选择历史 API Base URL"
-            title={historyItems.length === 0 ? '暂无历史地址' : '历史地址'}
+            data-tooltip={historyItems.length === 0 ? '暂无历史地址' : '历史地址'}
             className="flex size-9 shrink-0 items-center justify-center rounded-r-md border border-gray-300 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-50"
           >
             <History className="size-4" />
@@ -71,7 +71,7 @@ export function ApiBaseUrlInput({
               >
                 <button
                   type="button"
-                  title={item}
+                  data-tooltip={item}
                   className="min-w-0 flex-1 truncate px-2 py-2 text-left text-xs"
                   onClick={() => {
                     onChange(item)
@@ -84,7 +84,7 @@ export function ApiBaseUrlInput({
                 <button
                   type="button"
                   aria-label={`删除历史地址 ${item}`}
-                  title="删除历史地址"
+                  data-tooltip="删除历史地址"
                   className={cn(
                     'mr-1 flex size-7 shrink-0 items-center justify-center rounded-sm text-gray-400',
                     'hover:bg-white hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500'

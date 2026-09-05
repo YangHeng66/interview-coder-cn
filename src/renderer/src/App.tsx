@@ -10,13 +10,18 @@ import { useSettingsStore } from '@/lib/store/settings'
 import { useShortcutsStore } from '@/lib/store/shortcuts'
 import { getCloneableFields } from '@/lib/utils'
 import { useKnowledgeStore } from '@/lib/store/knowledge'
+import { ProtectedHints } from '@/components/ProtectedHints'
+import { LocalFilePicker } from '@/components/LocalFilePicker'
+import { UpdateNotice } from '@/components/UpdateNotice'
 
 export default function App() {
+  const isToolbar = /^#\/?toolbar(?:$|\?)/.test(window.location.hash)
   const [initialized, setInitialized] = useState(false)
   const settingsStore = useSettingsStore()
   const { shortcuts } = useShortcutsStore()
 
   useEffect(() => {
+    if (isToolbar) return
     window.api.getAppSettings().then((settings) => {
       const blankFields = Object.keys(settings).filter(
         (key) => settings[key] && !settingsStore[key]
@@ -36,17 +41,17 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (initialized) {
+    if (initialized && !isToolbar) {
       window.api.updateAppSettings(getCloneableFields(settingsStore))
     }
-  }, [initialized, settingsStore])
+  }, [initialized, settingsStore, isToolbar])
 
   useEffect(() => {
-    console.log('App initShortcuts:', shortcuts) // DEBUG: 检查新键
-    window.api.initShortcuts(shortcuts)
-    window.api.getShortcuts().then((shortcutsStatus) => {
-      console.log('Shortcuts registered:', shortcutsStatus) // DEBUG: 主进程状态
-    })
+    if (isToolbar) return
+    void window.api
+      .initShortcuts(shortcuts)
+      .then(() => window.api.getShortcuts())
+      .then(useShortcutsStore.getState().setRegistrations)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -65,6 +70,9 @@ export default function App() {
       </HashRouter>
 
       <Toaster />
+      {!isToolbar && <ProtectedHints />}
+      {!isToolbar && <LocalFilePicker />}
+      {!isToolbar && <UpdateNotice />}
     </>
   )
 }

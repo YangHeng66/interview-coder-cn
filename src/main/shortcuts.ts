@@ -2,6 +2,26 @@ import { globalShortcut, ipcMain, screen } from 'electron'
 import type { BrowserWindow, Rectangle } from 'electron'
 import type { ModelMessage } from 'ai'
 import { randomUUID } from 'node:crypto'
+import './model-diagnostics'
+import appConfig from '../../app.config.json'
+import shortcutConfig from '../../shortcuts.config.json'
+import {
+  activeConversation,
+  getConversationView,
+  recordChatEvent,
+  recordVisionEvent,
+  recordKnowledge,
+  saveConversationModels,
+  loadConversation,
+  activateConversation,
+  listConversations,
+  flushConversations,
+  renameConversation,
+  deleteConversation,
+  exportConversation,
+  newConversation
+} from './conversations'
+import type { ShortcutRegistration } from '../preload/contracts'
 import { applyContentProtection } from './main-window'
 import {
   showToolbar,
@@ -91,19 +111,23 @@ type Shortcut = {
   key: string
   status: ShortcutStatus
   registeredKeys: string[]
+  conflictAction?: string
 }
 
 enum ShortcutStatus {
   Registered = 'registered',
   Failed = 'failed',
   /** Shortcut is available to register but not registered. */
-  Available = 'available'
+  Available = 'available',
+  Disabled = 'disabled',
+  Conflict = 'conflict'
 }
 
-const MOVE_STEP = 200
+const MOVE_STEP = appConfig.interface.moveStep
 /** Opacity delta per shortcut press, matching the settings slider step */
-const OPACITY_STEP = 0.05
+const OPACITY_STEP = appConfig.interface.opacityStep
 const shortcuts: Record<string, Shortcut> = {}
+let shortcutRecording = false
 
 type AbortReason = 'user' | 'new-request' | 'clear-chat' | 'profile-switch'
 
@@ -117,6 +141,8 @@ interface StreamContext {
 }
 
 let currentStreamContext: StreamContext | null = null
+let conversationTransitions = Promise.resolve()
+let pendingConversationTransitions = 0
 
 // Conversation history tracking
 let visionConversationMessages: ModelMessage[] = []
@@ -153,8 +179,8 @@ function notifyVisionStreamFinished(streamContext: StreamContext): void {
   // Some OpenAI-compatible relays emit the SDK finish event before their SSE
   // connection closes. Clear the UI immediately and keep the iterator cleanup
   // below as the normal conversation-history path.
-  mainWindow.webContents.send('solution-complete')
-  mainWindow.webContents.send('ai-loading-end')
+  sendVisionEvent('solution-complete')
+  sendVisionEvent('ai-loading-end')
 }
 
 const FRONT_REASSERT_DURATION = 8000
@@ -243,7 +269,7 @@ function softHideWindow(window: BrowserWindow) {
 function restoreSoftHiddenWindow(window: BrowserWindow) {
   if (!isWindowSoftHidden || !softHiddenBounds || window.isDestroyed()) return
 
-  applyContentProtection(window, true)
+  applyContentProtection(window)
   window.setBounds(softHiddenBounds)
   window.setIgnoreMouseEvents(state.ignoreMouse)
   window.setOpacity(1)
@@ -261,7 +287,7 @@ function showMainWindow(window: BrowserWindow) {
     window.show()
   }
 
-  applyContentProtection(window, process.platform === 'win32')
+  applyContentProtection(window)
   showToolbar()
   keepWindowInFront(window)
 }
@@ -333,6 +359,10 @@ function interruptChatStream(drainQueue = true): void {
 
 function releaseStream(streamContext: StreamContext): void {
   if (currentStreamContext !== streamContext) return
+  saveConversationModels(
+    streamContext.kind === 'chat' ? 'chat' : 'screenshot',
+    streamContext.kind === 'chat' ? chatConversationMessages : visionConversationMessages
+  )
   currentStreamContext = null
   drainAutoReplyQueue()
 }
@@ -347,10 +377,23 @@ function setAssistantMode(mode: AssistantMode) {
 }
 
 function sendChatEvent(event: ChatEvent) {
+  recordChatEvent(event)
   const mainWindow = global.mainWindow
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('chat-event', event)
   }
+}
+
+function sendVisionEvent(channel: string, value?: string | string[]) {
+  recordVisionEvent(channel, value)
+  global.mainWindow?.webContents.send(channel, value)
+}
+
+export function restoreConversationModels() {
+  visionConversationMessages = activeConversation('screenshot').modelMessages
+  chatConversationMessages = activeConversation('chat').modelMessages
+  recentScreenshots = activeConversation('screenshot').screenshots
+  hasAppendSeparator = false
 }
 
 function getMessageText(message: ModelMessage): string {
@@ -384,13 +427,15 @@ function sendKnowledgeContextUsed(
 ): void {
   const mainWindow = global.mainWindow
   if (!mainWindow || mainWindow.isDestroyed()) return
-  mainWindow.webContents.send('knowledge-context-used', {
+  const context = {
     mode,
     requestId,
     profileId: retrieval.profileId,
     profileName: retrieval.profileName,
     sources: retrieval.sources
-  } satisfies KnowledgeContextUsed)
+  } satisfies KnowledgeContextUsed
+  recordKnowledge(context)
+  mainWindow.webContents.send('knowledge-context-used', context)
 }
 
 async function retrieveKnowledgeContext(
@@ -402,12 +447,16 @@ async function retrieveKnowledgeContext(
 ): Promise<KnowledgeRetrieval | null> {
   try {
     const knowledgeSnapshot = await knowledgeService.getSnapshot()
+    if (abortSignal?.aborted) return null
+    const conversation = activeConversation(mode === 'chat' ? 'chat' : 'screenshot')
+    conversation.profileId = knowledgeSnapshot.activeProfileId
+    conversation.builtinKnowledge = knowledgeSnapshot.builtinFrontendKnowledgeEnabled
     if (!knowledgeSnapshot.activeProfileId && !knowledgeSnapshot.builtinFrontendKnowledgeEnabled) {
       return null
     }
 
     let semanticQuery = ''
-    if (query.trim()) {
+    if (settings.knowledgeQueryRewrite && query.trim()) {
       try {
         semanticQuery = await rewriteKnowledgeQuery(mode, query, recentConversation, abortSignal)
       } catch (error) {
@@ -418,6 +467,7 @@ async function retrieveKnowledgeContext(
     if (abortSignal?.aborted) return null
 
     const retrieval = await knowledgeService.retrieve(query, semanticQuery)
+    if (abortSignal?.aborted) return null
     if (retrieval) sendKnowledgeContextUsed(mode, retrieval, requestId)
     return retrieval
   } catch (error) {
@@ -491,6 +541,7 @@ function validateChatRequest(
   documents: ChatDocument[] = [],
   allowBusy = false
 ): string | null {
+  if (pendingConversationTransitions) return '会话正在切换，请稍后发送'
   const mainWindow = global.mainWindow
   if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage) {
     return '当前无法发送消息'
@@ -514,6 +565,7 @@ function notifyAutoReplyIssue(message: string): void {
 }
 
 function handleTranscriptionEvent(event: TranscriptionEvent): void {
+  if (pendingConversationTransitions) return
   if (event.isPartial) return
   if (!settings.transcriptionAutoReply || !state.inCoderPage) return
   if (state.assistantMode !== 'chat') return
@@ -550,6 +602,7 @@ function handleTranscriptionEvent(event: TranscriptionEvent): void {
 
 function drainAutoReplyQueue(): void {
   if (
+    pendingConversationTransitions ||
     !settings.transcriptionAutoReply ||
     !state.inCoderPage ||
     state.assistantMode !== 'chat' ||
@@ -732,6 +785,7 @@ function submitTranscriptionToChat(): ChatRequestResult {
 }
 
 function clearChatConversation(): void {
+  if (pendingConversationTransitions) return
   clearAutoReplyQueue()
   if (currentStreamContext?.kind === 'chat') {
     abortCurrentStream('clear-chat')
@@ -754,13 +808,20 @@ function clearKnowledgeScopedConversations(): void {
 
   const mainWindow = global.mainWindow
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('solution-clear')
-    mainWindow.webContents.send('ai-loading-end')
+    sendVisionEvent('solution-clear')
+    sendVisionEvent('ai-loading-end')
   }
   sendChatEvent({ type: 'conversation-cleared' })
 }
 
 const callbacks: Record<string, () => void> = {
+  switchAssistantMode: () => {
+    if (state.inCoderPage) setAssistantMode(state.assistantMode === 'chat' ? 'screenshot' : 'chat')
+  },
+  increaseFontSize: () => global.mainWindow?.webContents.send('reader-action', 'increaseFontSize'),
+  decreaseFontSize: () => global.mainWindow?.webContents.send('reader-action', 'decreaseFontSize'),
+  toggleScreenshots: () =>
+    global.mainWindow?.webContents.send('reader-action', 'toggleScreenshots'),
   hideOrShowMainWindow: async () => {
     const mainWindow = global.mainWindow
     if (!mainWindow || mainWindow.isDestroyed()) return
@@ -790,14 +851,26 @@ const callbacks: Record<string, () => void> = {
   },
 
   takeScreenshot: async () => {
+    if (pendingConversationTransitions) return
     const mainWindow = global.mainWindow
     if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage) return
     setAssistantMode('screenshot')
     if (!settings.apiKey.trim()) return
 
-    abortCurrentStream('new-request')
+    detachConversationStream()
+    const streamContext: StreamContext = {
+      controller: new AbortController(),
+      reason: null,
+      kind: 'vision'
+    }
+    currentStreamContext = streamContext
     let loadingStarted = false
     const screenshotData = await takeScreenshot()
+    if (streamContext.controller.signal.aborted) return
+    if (!screenshotData) {
+      releaseStream(streamContext)
+      return
+    }
     if (screenshotData && mainWindow && !mainWindow.isDestroyed()) {
       saveScreenshotToDisk(screenshotData)
       const transcriptionText = getTranscriptionText()
@@ -823,18 +896,12 @@ const callbacks: Record<string, () => void> = {
         }
       ]
 
-      const streamContext: StreamContext = {
-        controller: new AbortController(),
-        reason: null,
-        kind: 'vision'
-      }
-      currentStreamContext = streamContext
       recentScreenshots = [screenshotData]
       hasAppendSeparator = false
-      mainWindow.webContents.send('solution-clear')
-      mainWindow.webContents.send('screenshots-updated', recentScreenshots)
-      mainWindow.webContents.send('screenshot-taken', screenshotData)
-      mainWindow.webContents.send('ai-loading-start')
+      sendVisionEvent('solution-clear')
+      sendVisionEvent('screenshots-updated', recentScreenshots)
+      sendVisionEvent('screenshot-taken', screenshotData)
+      sendVisionEvent('ai-loading-start')
       loadingStarted = true
       let endedNaturally = true
       let streamStarted = false
@@ -861,13 +928,13 @@ const callbacks: Record<string, () => void> = {
               break
             }
             assistantResponse += chunk
-            mainWindow.webContents.send('solution-chunk', chunk)
+            sendVisionEvent('solution-chunk', chunk)
           }
         } catch (error) {
           if (!streamContext.controller.signal.aborted) {
             endedNaturally = false
             console.error('Error streaming solution:', error)
-            mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+            sendVisionEvent('solution-error', extractErrorMessage(error))
           } else {
             endedNaturally = false
           }
@@ -875,7 +942,7 @@ const callbacks: Record<string, () => void> = {
 
         if (streamContext.controller.signal.aborted) {
           if (streamContext.reason === 'user') {
-            mainWindow.webContents.send('solution-stopped')
+            sendVisionEvent('solution-stopped')
           }
         } else if (endedNaturally) {
           // Add assistant response to conversation history
@@ -885,25 +952,26 @@ const callbacks: Record<string, () => void> = {
               content: assistantResponse
             })
           }
-          mainWindow.webContents.send('solution-complete')
+          sendVisionEvent('solution-complete')
         }
       } catch (error) {
         if (streamContext.controller.signal.aborted) {
           if (streamContext.reason === 'user') {
-            mainWindow.webContents.send('solution-stopped')
+            sendVisionEvent('solution-stopped')
           }
         } else {
           endedNaturally = false
           console.error('Error streaming solution:', error)
-          mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+          sendVisionEvent('solution-error', extractErrorMessage(error))
         }
       } finally {
+        const isCurrent = currentStreamContext === streamContext
         releaseStream(streamContext)
         if (!streamStarted && streamContext.reason === 'user') {
-          mainWindow.webContents.send('solution-stopped')
+          sendVisionEvent('solution-stopped')
         }
-        if (loadingStarted && mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ai-loading-end')
+        if (isCurrent && loadingStarted && mainWindow && !mainWindow.isDestroyed()) {
+          sendVisionEvent('ai-loading-end')
         }
       }
     }
@@ -911,6 +979,7 @@ const callbacks: Record<string, () => void> = {
 
   // Append screenshot for continuous capture (if conversation exists)
   appendScreenshot: async () => {
+    if (pendingConversationTransitions) return
     const mainWindow = global.mainWindow
     if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage) return
     setAssistantMode('screenshot')
@@ -922,10 +991,21 @@ const callbacks: Record<string, () => void> = {
       return
     }
 
-    abortCurrentStream('new-request')
+    detachConversationStream()
+    const streamContext: StreamContext = {
+      controller: new AbortController(),
+      reason: null,
+      kind: 'vision'
+    }
+    currentStreamContext = streamContext
     let loadingStarted = false
 
     const screenshotData = await takeScreenshot()
+    if (streamContext.controller.signal.aborted) return
+    if (!screenshotData) {
+      releaseStream(streamContext)
+      return
+    }
     if (screenshotData && mainWindow && !mainWindow.isDestroyed()) {
       saveScreenshotToDisk(screenshotData)
       const transcriptionText = getTranscriptionText()
@@ -951,24 +1031,17 @@ const callbacks: Record<string, () => void> = {
       }
       visionConversationMessages.push(newUserMessage)
 
-      const streamContext: StreamContext = {
-        controller: new AbortController(),
-        reason: null,
-        kind: 'vision'
-      }
-      currentStreamContext = streamContext
-
       recentScreenshots.push(screenshotData)
       recentScreenshots = recentScreenshots.slice(-5) // 限5张
-      mainWindow.webContents.send('screenshot-taken', screenshotData)
-      mainWindow.webContents.send('screenshots-updated', recentScreenshots)
+      sendVisionEvent('screenshot-taken', screenshotData)
+      sendVisionEvent('screenshots-updated', recentScreenshots)
       if (!hasAppendSeparator) {
-        mainWindow.webContents.send('solution-chunk', '\n\n---\n\n')
+        sendVisionEvent('solution-chunk', '\n\n---\n\n')
         hasAppendSeparator = true
       } else {
-        mainWindow.webContents.send('solution-chunk', '\n\n')
+        sendVisionEvent('solution-chunk', '\n\n')
       }
-      mainWindow.webContents.send('ai-loading-start')
+      sendVisionEvent('ai-loading-start')
       loadingStarted = true
 
       let endedNaturally = true
@@ -996,13 +1069,13 @@ const callbacks: Record<string, () => void> = {
               break
             }
             assistantResponse += chunk
-            mainWindow.webContents.send('solution-chunk', chunk)
+            sendVisionEvent('solution-chunk', chunk)
           }
         } catch (error) {
           if (!streamContext.controller.signal.aborted) {
             endedNaturally = false
             console.error('Error streaming continuous solution:', error)
-            mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+            sendVisionEvent('solution-error', extractErrorMessage(error))
           } else {
             endedNaturally = false
           }
@@ -1010,7 +1083,7 @@ const callbacks: Record<string, () => void> = {
 
         if (streamContext.controller.signal.aborted) {
           if (streamContext.reason === 'user') {
-            mainWindow.webContents.send('solution-stopped')
+            sendVisionEvent('solution-stopped')
           }
         } else if (endedNaturally) {
           // Add assistant response to conversation history
@@ -1020,25 +1093,26 @@ const callbacks: Record<string, () => void> = {
               content: assistantResponse
             })
           }
-          mainWindow.webContents.send('solution-complete')
+          sendVisionEvent('solution-complete')
         }
       } catch (error) {
         if (streamContext.controller.signal.aborted) {
           if (streamContext.reason === 'user') {
-            mainWindow.webContents.send('solution-stopped')
+            sendVisionEvent('solution-stopped')
           }
         } else {
           endedNaturally = false
           console.error('Error streaming continuous solution:', error)
-          mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+          sendVisionEvent('solution-error', extractErrorMessage(error))
         }
       } finally {
+        const isCurrent = currentStreamContext === streamContext
         releaseStream(streamContext)
         if (!streamStarted && streamContext.reason === 'user') {
-          mainWindow.webContents.send('solution-stopped')
+          sendVisionEvent('solution-stopped')
         }
-        if (loadingStarted && mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ai-loading-end')
+        if (isCurrent && loadingStarted && mainWindow && !mainWindow.isDestroyed()) {
+          sendVisionEvent('ai-loading-end')
         }
       }
     }
@@ -1116,6 +1190,10 @@ const callbacks: Record<string, () => void> = {
     mainWindow.webContents.send('toggle-transcription')
   },
 
+  pauseResumeTranscription: () => {
+    if (state.inCoderPage) global.mainWindow?.webContents.send('pause-resume-transcription')
+  },
+
   clearTranscription: () => {
     const mainWindow = global.mainWindow
     if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage) return
@@ -1142,6 +1220,7 @@ const clickableActions = new Set([
   'moveMainWindowLeft',
   'moveMainWindowRight',
   'toggleTranscription',
+  'pauseResumeTranscription',
   'clearTranscription',
   'sendTranscriptionToChat'
 ])
@@ -1153,40 +1232,25 @@ function unregisterShortcut(action: string) {
     shortcut.registeredKeys.forEach((registeredKey) => {
       globalShortcut.unregister(registeredKey)
     })
-  } else {
-    globalShortcut.unregister(shortcut.key)
   }
   shortcut.status = ShortcutStatus.Available
   shortcut.registeredKeys = []
 }
 
 function getShortcutRegistrationKeys(key: string) {
-  const keys = [key]
-  if (process.platform !== 'win32') {
-    return keys
-  }
-  const parts = key.split('+')
-  const hasAlt = parts.includes('Alt')
-  const hasCtrl = parts.includes('CommandOrControl') || parts.includes('Control')
-  if (hasAlt && !hasCtrl) {
-    const aliasParts = [...parts]
-    const altIndex = aliasParts.indexOf('Alt')
-    if (altIndex >= 0) {
-      aliasParts.splice(altIndex, 0, 'CommandOrControl')
-      const aliasKey = aliasParts.join('+')
-      if (!keys.includes(aliasKey)) {
-        keys.push(aliasKey)
-      }
-    }
-  }
-  return keys
+  return [key]
 }
 
 function registerShortcut(action: string, key: string) {
-  if (shortcuts[action]) {
-    unregisterShortcut(action)
+  if (!key || shortcutConfig[action as keyof typeof shortcutConfig].scope === 'local') {
+    shortcuts[action] = {
+      action,
+      key,
+      status: key ? ShortcutStatus.Registered : ShortcutStatus.Disabled,
+      registeredKeys: []
+    }
+    return
   }
-
   const keysToRegister = getShortcutRegistrationKeys(key)
   const registeredKeys: string[] = []
   keysToRegister.forEach((shortcutKey) => {
@@ -1205,21 +1269,148 @@ function registerShortcut(action: string, key: string) {
 
 ipcMain.handle('getShortcuts', () => shortcuts)
 
+function detachConversationStream() {
+  clearAutoReplyQueue()
+  const context = currentStreamContext
+  if (context) {
+    abortCurrentStream('new-request')
+    if (context.kind === 'chat' && context.requestId && context.assistantMessageId) {
+      sendChatEvent({
+        type: 'assistant-stopped',
+        requestId: context.requestId,
+        messageId: context.assistantMessageId
+      })
+    }
+    if (context.kind === 'vision') sendVisionEvent('solution-stopped')
+    saveConversationModels(
+      context.kind === 'chat' ? 'chat' : 'screenshot',
+      context.kind === 'chat' ? chatConversationMessages : visionConversationMessages
+    )
+    currentStreamContext = null
+  }
+}
+
+ipcMain.handle('getConversations', () => listConversations())
+ipcMain.handle('getConversationViews', () => ({
+  screenshot: getConversationView('screenshot'),
+  chat: getConversationView('chat')
+}))
+function transitionConversation<T>(action: () => Promise<T>): Promise<T> {
+  pendingConversationTransitions += 1
+  const operation = conversationTransitions.then(async () => {
+    detachConversationStream()
+    try {
+      await flushConversations()
+      return await action()
+    } finally {
+      pendingConversationTransitions -= 1
+      drainAutoReplyQueue()
+    }
+  })
+  conversationTransitions = operation.then(
+    () => undefined,
+    () => undefined
+  )
+  return operation
+}
+
+ipcMain.handle('openConversation', (_event, id: string) =>
+  transitionConversation(async () => {
+    const conversation = await loadConversation(id)
+    const profile = await knowledgeService.setActiveProfile(conversation.profileId)
+    if (!profile.ok) throw new Error(profile.error)
+    const builtin = await knowledgeService.setBuiltinKnowledgeEnabled(conversation.builtinKnowledge)
+    if (!builtin.ok) throw new Error(builtin.error)
+    const otherMode = conversation.mode === 'chat' ? 'screenshot' : 'chat'
+    const otherConversation = activeConversation(otherMode)
+    if (
+      otherConversation.profileId !== conversation.profileId ||
+      otherConversation.builtinKnowledge !== conversation.builtinKnowledge
+    ) {
+      newConversation(otherMode)
+    }
+    activateConversation(conversation)
+    restoreConversationModels()
+    setAssistantMode(conversation.mode)
+    return { screenshot: getConversationView('screenshot'), chat: getConversationView('chat') }
+  })
+)
+ipcMain.handle('newConversation', (_event, mode: AssistantMode) =>
+  transitionConversation(async () => {
+    newConversation(mode)
+    restoreConversationModels()
+    return { screenshot: getConversationView('screenshot'), chat: getConversationView('chat') }
+  })
+)
+ipcMain.handle('renameConversation', async (_event, id: string, title: string) => {
+  await renameConversation(id, title)
+  return listConversations()
+})
+ipcMain.handle('deleteConversation', (_event, id: string) =>
+  transitionConversation(async () => {
+    await deleteConversation(id)
+    restoreConversationModels()
+    return { screenshot: getConversationView('screenshot'), chat: getConversationView('chat') }
+  })
+)
+ipcMain.handle('exportConversation', (_event, id: string) => exportConversation(id))
+
+function registerShortcutSet(bindings: { action: string; key: string }[]) {
+  Object.keys(shortcuts).forEach(unregisterShortcut)
+  const owners = new Map<string, string>()
+  for (const binding of bindings) {
+    const definition = shortcutConfig[binding.action as keyof typeof shortcutConfig]
+    const normalized = binding.key
+      .toLowerCase()
+      .replace(/commandorcontrol/g, process.platform === 'darwin' ? 'command' : 'control')
+      .replace(/ctrl/g, 'control')
+      .split('+')
+      .sort()
+      .join('+')
+    const owner = owners.get(normalized)
+    if (binding.key && owner) {
+      shortcuts[binding.action] = {
+        ...binding,
+        status: ShortcutStatus.Conflict,
+        conflictAction: owner,
+        registeredKeys: []
+      }
+    } else {
+      if (binding.key) owners.set(normalized, binding.action)
+      if (shortcutRecording && definition.scope === 'global') {
+        shortcuts[binding.action] = {
+          ...binding,
+          status: ShortcutStatus.Available,
+          registeredKeys: []
+        }
+      } else registerShortcut(binding.action, binding.key)
+    }
+  }
+  return shortcuts satisfies Record<string, ShortcutRegistration>
+}
+
+ipcMain.handle('setShortcutRecording', (_event, recording: boolean) => {
+  shortcutRecording = recording
+  return registerShortcutSet(Object.values(shortcuts).map(({ action, key }) => ({ action, key })))
+})
+
 ipcMain.handle(
   'initShortcuts',
   (_event, shortcuts: Record<string, { action: string; key: string }>) => {
-    Object.entries(shortcuts).forEach(([action, { key }]) => {
-      registerShortcut(action, key)
-    })
+    return registerShortcutSet(
+      Object.entries(shortcuts).map(([action, { key }]) => ({ action, key }))
+    )
   }
 )
 
 ipcMain.handle('updateShortcuts', (_event, _shortcuts: { action: string; key: string }[]) => {
-  _shortcuts.forEach((shortcut) => {
-    if (shortcuts[shortcut.action]?.key !== shortcut.key) {
-      registerShortcut(shortcut.action, shortcut.key)
-    }
+  const merged = Object.fromEntries(
+    Object.values(shortcuts).map(({ action, key }) => [action, { action, key }])
+  )
+  _shortcuts.forEach((binding) => {
+    merged[binding.action] = binding
   })
+  return registerShortcutSet(Object.values(merged))
 })
 
 ipcMain.handle('stopSolutionStream', () => {
@@ -1309,6 +1500,9 @@ ipcMain.handle('deleteKnowledgeProfile', async (_event, profileId: string) => {
 })
 
 ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
+  if (pendingConversationTransitions) {
+    return { success: false, error: '会话正在切换，请稍后发送' }
+  }
   const mainWindow = global.mainWindow
   if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage || !settings.apiKey) {
     return { success: false, error: 'Invalid state' }
@@ -1319,7 +1513,7 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
     return { success: false, error: 'No active conversation' }
   }
 
-  abortCurrentStream('new-request')
+  detachConversationStream()
   const streamContext: StreamContext = {
     controller: new AbortController(),
     reason: null,
@@ -1328,7 +1522,8 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
   currentStreamContext = streamContext
 
   // Add a separator before the follow-up response
-  mainWindow.webContents.send('solution-chunk', '\n\n---\n\n')
+  sendVisionEvent('solution-chunk', '\n\n---\n\n')
+  sendVisionEvent('ai-loading-start')
 
   let endedNaturally = true
   let streamStarted = false
@@ -1358,13 +1553,13 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
           break
         }
         assistantResponse += chunk
-        mainWindow.webContents.send('solution-chunk', chunk)
+        sendVisionEvent('solution-chunk', chunk)
       }
     } catch (error) {
       if (!streamContext.controller.signal.aborted) {
         endedNaturally = false
         console.error('Error streaming follow-up solution:', error)
-        mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+        sendVisionEvent('solution-error', extractErrorMessage(error))
       } else {
         endedNaturally = false
       }
@@ -1372,7 +1567,7 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
 
     if (streamContext.controller.signal.aborted) {
       if (streamContext.reason === 'user') {
-        mainWindow.webContents.send('solution-stopped')
+        sendVisionEvent('solution-stopped')
       }
     } else if (endedNaturally) {
       // Update conversation history with user question and assistant response
@@ -1391,22 +1586,22 @@ ipcMain.handle('sendFollowUpQuestion', async (_event, question: string) => {
           content: assistantResponse
         })
       }
-      mainWindow.webContents.send('solution-complete')
+      sendVisionEvent('solution-complete')
     }
   } catch (error) {
     if (streamContext.controller.signal.aborted) {
       if (streamContext.reason === 'user') {
-        mainWindow.webContents.send('solution-stopped')
+        sendVisionEvent('solution-stopped')
       }
     } else {
       endedNaturally = false
       console.error('Error streaming follow-up solution:', error)
-      mainWindow.webContents.send('solution-error', extractErrorMessage(error))
+      sendVisionEvent('solution-error', extractErrorMessage(error))
     }
   } finally {
     releaseStream(streamContext)
     if (!streamStarted && streamContext.reason === 'user') {
-      mainWindow.webContents.send('solution-stopped')
+      sendVisionEvent('solution-stopped')
     }
   }
 

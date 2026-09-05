@@ -2,7 +2,9 @@ import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { copyFile, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
-import { app, dialog } from 'electron'
+import { app } from 'electron'
+import appConfig from '../../../app.config.json'
+import { KnowledgeSearchClient } from './search-client'
 import createKnowledgeWorker from './worker?nodeWorker'
 import {
   KNOWLEDGE_DOCUMENT_EXTENSIONS,
@@ -19,17 +21,13 @@ import {
   type KnowledgeResult,
   type KnowledgeSnapshot
 } from '../../preload/contracts'
-import {
-  BUILTIN_FRONTEND_DOCUMENT_IDS,
-  BUILTIN_FRONTEND_DOCUMENTS,
-  createBuiltinFrontendProfile
-} from './builtin/frontend'
-import {
-  formatKnowledgeContext,
-  KnowledgeSearchIndex,
-  type KnowledgeChunkFile,
-  type KnowledgeRetrieval
-} from './search'
+import type {
+  KnowledgeDiagnostic,
+  KnowledgeDiagnosticInput,
+  KnowledgePassage
+} from '../../preload/contracts'
+import { createBuiltinFrontendProfile } from './builtin/frontend'
+import { type KnowledgeChunkFile, type KnowledgeRetrieval } from './search'
 
 type StoredKnowledgeDocument = KnowledgeDocument & {
   storedFileName: string
@@ -144,9 +142,8 @@ class KnowledgeService {
   private loaded = false
   private loadingPromise: Promise<void> | null = null
   private worker = new KnowledgeWorkerClient()
-  private searchIndex = new KnowledgeSearchIndex()
-  private indexedScopeKey: string | null = null
-  private indexDirty = true
+  private search = new KnowledgeSearchClient()
+  private warmupTimer: ReturnType<typeof setTimeout> | null = null
 
   private get rootDir(): string {
     return join(app.getPath('userData'), 'knowledge-base', 'v1')
@@ -208,7 +205,7 @@ class KnowledgeService {
       await this.saveManifest()
     }
     this.loaded = true
-    this.indexDirty = true
+    this.scheduleIndexWarmup()
 
     const interruptedIds = this.manifest.documents
       .filter((document) => document.status === 'processing')
@@ -240,6 +237,7 @@ class KnowledgeService {
   }
 
   private emitSnapshot(): void {
+    this.scheduleIndexWarmup()
     const window = global.mainWindow
     if (window && !window.isDestroyed()) {
       window.webContents.send('knowledge-snapshot-changed', this.snapshot())
@@ -285,7 +283,6 @@ class KnowledgeService {
     if (!profile.documentLinks.some((link) => link.documentId === documentId)) {
       profile.documentLinks.push({ documentId, priority: 'normal', linkedAt: now() })
       profile.updatedAt = now()
-      this.indexDirty = true
     }
     return true
   }
@@ -322,7 +319,6 @@ class KnowledgeService {
       document.characterCount = result.text.length
       document.chunkCount = result.chunks.length
       document.updatedAt = now()
-      this.indexDirty = true
       await this.saveManifest()
       this.emitSnapshot()
       this.emitProgress({
@@ -340,7 +336,6 @@ class KnowledgeService {
       document.characterCount = 0
       document.chunkCount = 0
       document.updatedAt = now()
-      this.indexDirty = true
       await this.saveManifest()
       this.emitSnapshot()
       this.emitProgress({
@@ -357,6 +352,7 @@ class KnowledgeService {
 
   async getSnapshot(): Promise<KnowledgeSnapshot> {
     await this.ensureLoaded()
+    this.scheduleIndexWarmup()
     return this.snapshot()
   }
 
@@ -404,7 +400,6 @@ class KnowledgeService {
         profile.jobDescription = cleanMultiline(patch.jobDescription, 30_000)
       }
       profile.updatedAt = now()
-      this.indexDirty = true
       await this.saveManifest()
       this.emitSnapshot()
       return success(structuredClone(profile))
@@ -420,7 +415,6 @@ class KnowledgeService {
       this.manifest.profiles = this.manifest.profiles.filter((profile) => profile.id !== profileId)
       if (this.manifest.profiles.length === previousLength) return failure('岗位档案不存在')
       if (this.manifest.activeProfileId === profileId) this.manifest.activeProfileId = null
-      this.indexDirty = true
       await this.saveManifest()
       this.emitSnapshot()
       return success(this.snapshot())
@@ -436,7 +430,6 @@ class KnowledgeService {
         return failure('岗位档案不存在')
       }
       this.manifest.activeProfileId = profileId
-      this.indexDirty = true
       await this.saveManifest()
       this.emitSnapshot()
       return success(this.snapshot())
@@ -453,7 +446,6 @@ class KnowledgeService {
         return success(this.snapshot())
       }
       this.manifest.builtinFrontendKnowledgeEnabled = enabled
-      this.indexDirty = true
       await this.saveManifest()
       this.emitSnapshot()
       return success(this.snapshot())
@@ -463,18 +455,15 @@ class KnowledgeService {
   }
 
   async importDocuments(
-    profileId?: string
+    profileId: string | undefined,
+    filePaths: string[]
   ): Promise<KnowledgeResult<KnowledgeImportResult | null>> {
     try {
       await this.ensureLoaded()
       if (profileId && !this.manifest.profiles.some((profile) => profile.id === profileId)) {
         return failure('要关联的岗位档案不存在')
       }
-      const result = await dialog.showOpenDialog(global.mainWindow ?? undefined, {
-        title: '导入知识库文档',
-        properties: ['openFile', 'multiSelections'],
-        filters: [{ name: '知识库文档', extensions: ['pdf', 'docx', 'txt', 'md', 'markdown'] }]
-      })
+      const result = { canceled: false, filePaths }
       if (result.canceled || result.filePaths.length === 0) return success(null)
       if (result.filePaths.length > KNOWLEDGE_MAX_IMPORT_FILES) {
         return failure(`一次最多导入 ${KNOWLEDGE_MAX_IMPORT_FILES} 个文档`)
@@ -592,7 +581,6 @@ class KnowledgeService {
         existing.priority = patch.priority
       }
       profile.updatedAt = now()
-      this.indexDirty = true
       await this.saveManifest()
       this.emitSnapshot()
       return success(this.snapshot())
@@ -618,7 +606,6 @@ class KnowledgeService {
         rm(this.getStoredPath(document), { force: true }),
         rm(this.getChunksPath(document.id), { force: true })
       ])
-      this.indexDirty = true
       await this.saveManifest()
       this.emitSnapshot()
       return success(this.snapshot())
@@ -637,100 +624,95 @@ class KnowledgeService {
     }
   }
 
-  private async ensureSearchIndex(
-    profile: KnowledgeProfile | null,
-    includeBuiltin: boolean
-  ): Promise<void> {
-    const scopeKey = `${profile?.id ?? 'none'}:${includeBuiltin ? 'builtin' : 'user-only'}`
-    if (!this.indexDirty && this.indexedScopeKey === scopeKey) return
+  private scheduleIndexWarmup(): void {
+    if (this.warmupTimer) clearTimeout(this.warmupTimer)
+    this.warmupTimer = setTimeout(() => {
+      this.warmupTimer = null
+      void this.syncSearchIndex().catch((error) =>
+        console.error('Knowledge index warmup failed:', error)
+      )
+    }, appConfig.knowledge.indexPrewarmDelayMs)
+  }
 
-    const userDocuments = profile
-      ? await Promise.all(
-          profile.documentLinks.map(async (link) => {
-            const document = this.manifest.documents.find(
-              (candidate) => candidate.id === link.documentId && candidate.status === 'ready'
-            )
-            if (!document) return null
-            try {
-              const chunkFile = JSON.parse(
-                await readFile(this.getChunksPath(document.id), 'utf8')
-              ) as KnowledgeChunkFile
-              if (!Array.isArray(chunkFile.chunks)) return null
-              return {
-                documentId: document.id,
-                documentName: document.name,
-                priority: link.priority,
-                chunks: chunkFile.chunks
-              }
-            } catch (error) {
-              console.error(`Failed to load knowledge chunks for ${document.name}:`, error)
-              return null
-            }
-          })
-        )
-      : []
-
-    const builtinDocuments = includeBuiltin
-      ? BUILTIN_FRONTEND_DOCUMENTS.map((document) => ({
-          documentId: document.id,
-          documentName: document.name,
-          priority: document.priority,
-          chunks: document.chunks
+  private syncSearchIndex() {
+    return this.search.call(
+      'sync',
+      this.manifest.documents
+        .filter((document) => document.status === 'ready')
+        .map((document) => ({
+          id: document.id,
+          name: document.name,
+          revision: document.updatedAt,
+          path: this.getChunksPath(document.id)
         }))
-      : []
+    )
+  }
 
-    this.searchIndex.replaceDocuments([
-      ...builtinDocuments,
-      ...userDocuments.filter((document) => document !== null)
-    ])
-    this.indexedScopeKey = scopeKey
-    this.indexDirty = false
+  private retrievalProfile(profileId: string | null, includeBuiltin: boolean): KnowledgeProfile {
+    if (profileId)
+      return structuredClone(this.manifest.profiles.find((profile) => profile.id === profileId)!)
+    const profile = createBuiltinFrontendProfile()
+    profile.documentLinks = []
+    if (!includeBuiltin) {
+      profile.name = '未选择岗位'
+      profile.role = ''
+      profile.jobDescription = ''
+    }
+    return profile
+  }
+
+  async diagnose(input: KnowledgeDiagnosticInput): Promise<KnowledgeResult<KnowledgeDiagnostic>> {
+    try {
+      const startedAt = performance.now()
+      await this.ensureLoaded()
+      const profile = this.retrievalProfile(input.profileId, input.includeBuiltin)
+      if (input.profileId === null) {
+        profile.name = '共享文档库'
+        profile.role = ''
+        profile.jobDescription = ''
+        profile.documentLinks = this.manifest.documents
+          .filter((document) => document.status === 'ready')
+          .map((document) => ({
+            documentId: document.id,
+            priority: 'normal',
+            linkedAt: document.createdAt
+          }))
+      }
+      const index = await this.syncSearchIndex()
+      const result = await this.search.call('search', {
+        query: input.query.trim(),
+        profile,
+        includeBuiltin: input.includeBuiltin
+      })
+      return success({ ...result.diagnostic, ...index, elapsedMs: performance.now() - startedAt })
+    } catch (error) {
+      return failure(error)
+    }
+  }
+
+  async previewDocument(documentId: string): Promise<KnowledgeResult<KnowledgePassage[]>> {
+    try {
+      await this.ensureLoaded()
+      await this.syncSearchIndex()
+      return success(await this.search.call('preview', documentId))
+    } catch (error) {
+      return failure(error)
+    }
   }
 
   async retrieve(query: string, semanticQuery = ''): Promise<KnowledgeRetrieval | null> {
     await this.ensureLoaded()
-    const userProfile =
-      this.manifest.profiles.find((candidate) => candidate.id === this.manifest.activeProfileId) ??
-      null
+    const profileId = this.manifest.activeProfileId
     const includeBuiltin = this.manifest.builtinFrontendKnowledgeEnabled
-    if (!userProfile && !includeBuiltin) return null
-
-    const profile = userProfile ?? createBuiltinFrontendProfile()
-    await this.ensureSearchIndex(userProfile, includeBuiltin)
-
-    const allowedDocumentIds = new Set([
-      ...(includeBuiltin ? BUILTIN_FRONTEND_DOCUMENTS.map((document) => document.id) : []),
-      ...(userProfile?.documentLinks.map((link) => link.documentId) ?? [])
-    ])
-    const userQuery = [query, semanticQuery].filter(Boolean).join('\n')
-    const profileQuery = [profile.company, profile.role, profile.jobDescription]
-      .filter(Boolean)
-      .join('\n')
-    const rankedChunks = this.searchIndex.search(userQuery || profileQuery, allowedDocumentIds)
-    const userFallbackChunks =
-      userProfile?.documentLinks
-        .map((link) => {
-          const chunk = this.searchIndex.getFirstChunk(link.documentId)
-          return chunk ? { ...chunk, priority: link.priority } : null
-        })
-        .filter((chunk) => chunk !== null) ?? []
-    const builtinFallbackChunks = includeBuiltin
-      ? BUILTIN_FRONTEND_DOCUMENTS.map((document) =>
-          this.searchIndex.getFirstChunk(document.id)
-        ).filter((chunk) => chunk !== undefined)
-      : []
-    const representativeBuiltinChunk = includeBuiltin
-      ? (rankedChunks.find((chunk) => BUILTIN_FRONTEND_DOCUMENT_IDS.has(chunk.documentId)) ??
-        this.searchIndex.getFirstChunk(BUILTIN_FRONTEND_DOCUMENTS[0]?.id ?? ''))
-      : undefined
-    const requiredChunks = representativeBuiltinChunk ? [representativeBuiltinChunk] : []
-
-    return formatKnowledgeContext({
+    if (!profileId && !includeBuiltin) return null
+    const profile = this.retrievalProfile(profileId, includeBuiltin)
+    await this.syncSearchIndex()
+    const result = await this.search.call('search', {
+      query: [query, semanticQuery].filter(Boolean).join('\n'),
       profile,
-      rankedChunks,
-      fallbackChunks: [...userFallbackChunks, ...builtinFallbackChunks],
-      requiredChunks
+      includeBuiltin
     })
+    return result.retrieval
   }
 }
 

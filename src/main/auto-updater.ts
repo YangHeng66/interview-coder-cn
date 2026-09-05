@@ -1,5 +1,19 @@
-import { dialog } from 'electron'
+import { ipcMain } from 'electron'
 import { autoUpdater } from 'electron-updater'
+import { flushConversations } from './conversations'
+
+let updateStatus: 'available' | 'downloaded' | null = null
+function publishUpdate(status: 'available' | 'downloaded') {
+  updateStatus = status
+  global.mainWindow?.webContents.send('update-status', status)
+}
+
+ipcMain.handle('getUpdateStatus', () => updateStatus)
+ipcMain.handle('downloadAppUpdate', () => autoUpdater.downloadUpdate())
+ipcMain.handle('installAppUpdate', async () => {
+  await flushConversations()
+  autoUpdater.quitAndInstall(false, true)
+})
 
 export function initAutoUpdater(): void {
   if (process.platform === 'darwin') {
@@ -9,20 +23,7 @@ export function initAutoUpdater(): void {
   try {
     autoUpdater.autoDownload = false
 
-    autoUpdater.on('update-available', async () => {
-      const result = await dialog.showMessageBox({
-        type: 'info',
-        buttons: ['立即下载', '稍后'],
-        defaultId: 0,
-        cancelId: 1,
-        title: '发现新版本',
-        message: '检测到新版本可用。',
-        detail: '现在下载并安装更新吗？'
-      })
-      if (result.response === 0) {
-        autoUpdater.downloadUpdate().catch((err) => console.error(err))
-      }
-    })
+    autoUpdater.on('update-available', () => publishUpdate('available'))
 
     autoUpdater.on('error', (error) => {
       console.error('Auto update error:', error)
@@ -32,20 +33,7 @@ export function initAutoUpdater(): void {
       // no-op
     })
 
-    autoUpdater.on('update-downloaded', async () => {
-      const res = await dialog.showMessageBox({
-        type: 'info',
-        buttons: ['立即重启', '稍后'],
-        defaultId: 0,
-        cancelId: 1,
-        title: '更新已就绪',
-        message: '更新已下载完成。',
-        detail: '是否立即重启以应用更新？'
-      })
-      if (res.response === 0) {
-        setImmediate(() => autoUpdater.quitAndInstall(false, true))
-      }
-    })
+    autoUpdater.on('update-downloaded', () => publishUpdate('downloaded'))
 
     // Trigger the check after window creation
     autoUpdater.checkForUpdates().catch((err) => console.error(err))
