@@ -70,6 +70,8 @@ const api = {
     >,
   exportConversation: (id: string) =>
     ipcRenderer.invoke('exportConversation', id) as Promise<string>,
+  writeClipboardText: (text: string) =>
+    ipcRenderer.invoke('writeClipboardText', text) as Promise<void>,
   onConversationStorageError: (callback: (message: string) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, message: string) => callback(message)
     ipcRenderer.on('conversation-storage-error', listener)

@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { mkdir, readFile, writeFile, rename, unlink } from 'node:fs/promises'
+import { mkdir, readFile, writeFile, rename, unlink, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { ModelMessage } from 'ai'
@@ -13,6 +13,7 @@ import type {
 import appConfig from '../../app.config.json'
 
 type Conversation = ConversationView & { modelMessages: ModelMessage[] }
+type StoredConversation = Conversation & { schemaVersion: 2 }
 type Manifest = {
   conversations: ConversationSummary[]
   active: Record<AssistantMode, string | null>
@@ -25,6 +26,88 @@ let timer: ReturnType<typeof setTimeout> | null = null
 let writes = Promise.resolve()
 let storageError: string | null = null
 const directory = () => join(app.getPath('userData'), appConfig.sessions.directory)
+const assetDirectory = (conversationId: string) =>
+  join(directory(), appConfig.sessions.assetDirectory, conversationId)
+const imageFiles = new Map<string, Map<string, string>>()
+const assetPrefix = 'conversation-asset:'
+
+function mapImages(messages: ModelMessage[], transform: (image: string) => string): ModelMessage[] {
+  return messages.map((message) => {
+    if (message.role !== 'user' || typeof message.content === 'string') return message
+    return {
+      ...message,
+      content: message.content.map((part) =>
+        part.type === 'image' && typeof part.image === 'string'
+          ? { ...part, image: transform(part.image) }
+          : part
+      )
+    }
+  })
+}
+
+async function serializeConversation(conversation: Conversation): Promise<string> {
+  const files = imageFiles.get(conversation.id) ?? new Map<string, string>()
+  imageFiles.set(conversation.id, files)
+  const pending: { data: string; file: string }[] = []
+  const imageFile = (data: string) => {
+    const existing = files.get(data)
+    if (existing) return existing
+    const file = `${randomUUID()}.png`
+    files.set(data, file)
+    pending.push({ data, file })
+    return file
+  }
+  const stored: StoredConversation = {
+    ...conversation,
+    schemaVersion: 2,
+    screenshots: conversation.screenshots.map(imageFile),
+    modelMessages: mapImages(conversation.modelMessages, (image) => assetPrefix + imageFile(image))
+  }
+  if (pending.length) {
+    await mkdir(assetDirectory(conversation.id), { recursive: true })
+    try {
+      await Promise.all(
+        pending.map(({ data, file }) =>
+          writeFile(join(assetDirectory(conversation.id), file), Buffer.from(data, 'base64'))
+        )
+      )
+    } catch (error) {
+      pending.forEach(({ data }) => files.delete(data))
+      throw error
+    }
+  }
+  return JSON.stringify(stored)
+}
+
+async function deserializeConversation(stored: StoredConversation): Promise<Conversation> {
+  const files = new Set(stored.screenshots)
+  mapImages(stored.modelMessages, (image) => {
+    files.add(image.slice(assetPrefix.length))
+    return image
+  })
+  const images = new Map(
+    await Promise.all(
+      [...files].map(
+        async (file) =>
+          [
+            file,
+            (await readFile(join(assetDirectory(stored.id), file))).toString('base64')
+          ] as const
+      )
+    )
+  )
+  imageFiles.set(stored.id, new Map([...images].map(([file, data]) => [data, file])))
+  const { schemaVersion: _version, ...conversation } = stored
+  void _version
+  return {
+    ...conversation,
+    screenshots: stored.screenshots.map((file) => images.get(file)!),
+    modelMessages: mapImages(
+      stored.modelMessages,
+      (image) => images.get(image.slice(assetPrefix.length))!
+    )
+  }
+}
 
 export async function initializeConversations() {
   await mkdir(directory(), { recursive: true })
@@ -195,9 +278,17 @@ export async function loadConversation(id: string): Promise<Conversation> {
   let conversation = loaded.get(id)
   if (!conversation) {
     const entry = manifest.conversations.find((item) => item.id === id)!
-    conversation = JSON.parse(
-      await readFile(join(directory(), `${entry.id}.json`), 'utf8')
-    ) as Conversation
+    const stored = JSON.parse(await readFile(join(directory(), `${entry.id}.json`), 'utf8')) as
+      | Conversation
+      | StoredConversation
+    if ('schemaVersion' in stored) {
+      if (stored.schemaVersion !== 2) throw new Error('不支持的会话存储版本')
+      conversation = await deserializeConversation(stored)
+    } else {
+      conversation = stored
+      dirty.add(id)
+      queueSave()
+    }
     conversation.chatMessages.forEach((message) => {
       if (message.status === 'streaming') message.status = 'stopped'
     })
@@ -214,10 +305,7 @@ export function activateConversation(conversation: Conversation) {
 }
 
 export async function renameConversation(id: string, title: string) {
-  const summary = manifest.conversations.find((item) => item.id === id)!
-  const conversation =
-    loaded.get(id) ??
-    (JSON.parse(await readFile(join(directory(), `${summary.id}.json`), 'utf8')) as Conversation)
+  const conversation = await loadConversation(id)
   conversation.title = title.trim()
   loaded.set(id, conversation)
   touch(conversation)
@@ -228,17 +316,16 @@ export async function deleteConversation(id: string) {
   await flushConversations()
   const entry = manifest.conversations.find((item) => item.id === id)!
   await unlink(join(directory(), `${entry.id}.json`))
+  await rm(assetDirectory(id), { recursive: true, force: true })
   loaded.delete(id)
+  imageFiles.delete(id)
   manifest.conversations = manifest.conversations.filter((item) => item.id !== id)
   if (manifest.active[entry.mode] === id) newConversation(entry.mode)
   await flushConversations()
 }
 
 export async function exportConversation(id: string): Promise<string> {
-  const summary = manifest.conversations.find((item) => item.id === id)!
-  const conversation =
-    loaded.get(id) ??
-    (JSON.parse(await readFile(join(directory(), `${summary.id}.json`), 'utf8')) as Conversation)
+  const conversation = await loadConversation(id)
   const content =
     conversation.mode === 'chat'
       ? conversation.chatMessages
@@ -262,7 +349,7 @@ export async function exportConversation(id: string): Promise<string> {
 export function flushConversations(): Promise<void> {
   if (timer !== null) clearTimeout(timer)
   timer = null
-  const snapshots = [...dirty].map((id) => ({ id, json: JSON.stringify(loaded.get(id)) }))
+  const snapshots = [...dirty].map((id) => structuredClone(loaded.get(id)!))
   dirty.clear()
   const index = JSON.stringify({
     ...manifest,
@@ -277,7 +364,7 @@ export function flushConversations(): Promise<void> {
   const operation = writes.then(async () => {
     for (const snapshot of snapshots) {
       const path = join(directory(), `${snapshot.id}.json`)
-      await writeFile(`${path}.tmp`, snapshot.json, 'utf8')
+      await writeFile(`${path}.tmp`, await serializeConversation(snapshot), 'utf8')
       await rename(`${path}.tmp`, path)
     }
     const path = join(directory(), 'index.json')
@@ -285,7 +372,10 @@ export function flushConversations(): Promise<void> {
     await rename(`${path}.tmp`, path)
     storageError = null
     for (const id of loaded.keys()) {
-      if (!Object.values(manifest.active).includes(id) && !dirty.has(id)) loaded.delete(id)
+      if (!Object.values(manifest.active).includes(id) && !dirty.has(id)) {
+        loaded.delete(id)
+        imageFiles.delete(id)
+      }
     }
   })
   writes = operation.catch((error) => {

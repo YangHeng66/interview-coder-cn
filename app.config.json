@@ -30,6 +30,7 @@
   "sessions": {
     "saveDelayMs": 500,
     "directory": "conversations",
+    "assetDirectory": "assets",
     "exportDirectory": "conversation-exports",
     "titleLength": 32
   },

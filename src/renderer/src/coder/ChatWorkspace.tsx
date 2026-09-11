@@ -2,6 +2,8 @@ import { memo, useEffect, useRef, useState } from 'react'
 import {
   AudioLines,
   Bot,
+  Check,
+  Copy,
   FileText,
   ListX,
   Mic,
@@ -27,6 +29,7 @@ import {
   useSettingsStore
 } from '@/lib/store/settings'
 import { useTranscriptionStore } from '@/lib/store/transcription'
+import { toast } from 'sonner'
 import { TranscriptionBar } from './TranscriptionBar'
 import {
   CHAT_DOCUMENT_EXTENSIONS,
@@ -151,6 +154,18 @@ const ChatMessageItem = memo(function ChatMessageItem({
   previousUserMessage?: ChatMessage
 }) {
   const knowledgeContext = useKnowledgeStore((state) => state.chatContexts[message.requestId])
+  const [copied, setCopied] = useState(false)
+
+  const copyMessage = async () => {
+    if (!message.content) return
+    try {
+      await window.api.writeClipboardText(message.content)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch (error) {
+      toast.error(`复制回答失败：${String(error)}`)
+    }
+  }
 
   if (message.role === 'user') {
     return (
@@ -200,6 +215,20 @@ const ChatMessageItem = memo(function ChatMessageItem({
         ) : null}
 
         <KnowledgeSources context={knowledgeContext} className="mt-1" />
+
+        {message.content && message.status !== 'streaming' && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="mt-1 size-7 text-gray-300/70 hover:bg-white/10 hover:text-white"
+            onClick={() => void copyMessage()}
+            aria-label={copied ? '已复制回答' : '复制回答'}
+            data-tooltip={copied ? '已复制回答' : '复制回答'}
+          >
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          </Button>
+        )}
 
         {message.status === 'stopped' && (
           <p className="mt-2 text-xs text-amber-100/70">回答已停止，未加入后续上下文</p>

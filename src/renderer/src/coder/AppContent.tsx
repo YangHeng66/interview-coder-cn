@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Image, ChevronDown, ChevronRight } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Copy, Image } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useSettingsStore } from '@/lib/store/settings'
 import { createStreamBatch } from '@/lib/stream-batch'
@@ -9,6 +9,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer'
 import ShortcutRenderer from '@/components/ShortcutRenderer'
 import { KnowledgeSources } from '@/components/KnowledgeSources'
 import { useKnowledgeStore } from '@/lib/store/knowledge'
+import { toast } from 'sonner'
 
 const SCROLL_OFFSET = 120
 
@@ -27,10 +28,23 @@ export function AppContent() {
   } = useSolutionStore()
 
   const [preview, setPreview] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const { screenshotsCollapsed, updateSetting } = useSettingsStore()
   const batch = useMemo(() => createStreamBatch(addSolutionChunk), [addSolutionChunk])
   const visionContext = useKnowledgeStore((state) => state.visionContext)
   const clearVisionContext = useKnowledgeStore((state) => state.clearVisionContext)
+
+  const copySolution = async () => {
+    const solution = solutionChunks.join('').trim()
+    if (!solution) return
+    try {
+      await window.api.writeClipboardText(solution)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch (error) {
+      toast.error(`复制回答失败：${String(error)}`)
+    }
+  }
 
   useEffect(() => {
     window.addEventListener('conversation-restored', batch.clear)
@@ -251,6 +265,19 @@ export function AppContent() {
 
       {/* Solution Display */}
       <KnowledgeSources context={visionContext} className="mb-2" />
+      {solutionChunks.join('').trim() && (
+        <div className="mb-1 flex justify-end">
+          <button
+            type="button"
+            className="inline-flex size-7 items-center justify-center rounded text-neutral-300/70 hover:bg-white/10 hover:text-white"
+            onClick={() => void copySolution()}
+            aria-label={copied ? '已复制回答' : '复制回答'}
+            data-tooltip={copied ? '已复制回答' : '复制回答'}
+          >
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          </button>
+        </div>
+      )}
       <MarkdownRenderer>{solutionChunks.join('')}</MarkdownRenderer>
     </div>
   )
