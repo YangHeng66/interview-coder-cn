@@ -51,11 +51,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          draft: false
           files: |
-            dist/**/interview-coder-cn-*.dmg
-            dist/**/interview-coder-cn-*.exe
-            dist/**/latest-mac.yml
-            dist/**/latest-windows.yml
+            dist/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
