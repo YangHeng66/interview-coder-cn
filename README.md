@@ -1,4 +1,4 @@
-# 桌面多模态 AI 助手
+# AI 面试助手 支持市面上大部分软件投屏隐身，具体需要自行测试
 
 <p align="center">
   <img src="./build/icon.png" alt="桌面多模态 AI 助手" width="128" />
