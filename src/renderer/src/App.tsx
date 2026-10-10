@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { HashRouter, Routes, Route, useLocation } from 'react-router'
 import { Toaster } from 'sonner'
 import CoderPage from '@/coder'
@@ -58,6 +58,7 @@ export default function App() {
   return (
     <>
       <HashRouter>
+        <ThemeController />
         <ToolbarVisibilityController />
         <KnowledgeSyncController />
         <Routes>
@@ -69,12 +70,26 @@ export default function App() {
         </Routes>
       </HashRouter>
 
-      <Toaster />
       {!isToolbar && <ProtectedHints />}
       {!isToolbar && <LocalFilePicker />}
       {!isToolbar && <UpdateNotice />}
     </>
   )
+}
+
+/** The overlay is dark, the management pages are light */
+const DARK_ROUTES = new Set(['/', '/toolbar'])
+
+function ThemeController() {
+  const { pathname } = useLocation()
+  const isDark = DARK_ROUTES.has(pathname)
+
+  // On <html>, so portalled dialogs, selects and toasts pick up the theme too
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark)
+  }, [isDark])
+
+  return <Toaster theme={isDark ? 'dark' : 'light'} />
 }
 
 function KnowledgeSyncController() {

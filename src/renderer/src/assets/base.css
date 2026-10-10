@@ -1,43 +1,76 @@
 @import 'tailwindcss';
-@import "tw-animate-css";
+@import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
- 
+
+/* Theme follows the route (set on <html> by App), never the OS color scheme */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light: settings / knowledge / help pages */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: #ffffff;
+  --foreground: #24282b;
+  --card: #ffffff;
+  --card-foreground: #24282b;
+  --popover: #ffffff;
+  --popover-foreground: #24282b;
+  --primary: #237f70;
+  --primary-foreground: #ffffff;
+  --primary-strong: #176958;
+  --primary-soft: #e7f6f0;
+  --secondary: #eef1f2;
+  --secondary-foreground: #24282b;
+  --muted: #f4f5f6;
+  --muted-foreground: #5f686e;
+  --accent: #eef1f2;
+  --accent-foreground: #24282b;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: #dfe3e5;
+  --input: #cfd5d8;
+  --ring: #237f70;
+  --header: #303335;
+  --header-foreground: #f5f6f7;
+  --sidebar: #eef1f2;
+  --sidebar-foreground: #24282b;
+  --sidebar-primary: #237f70;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffffff;
+  --sidebar-accent-foreground: #172e29;
+  --sidebar-border: #dfe3e5;
+  --sidebar-ring: #237f70;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
 }
- 
+
+/* Dark: the overlay (coder page + toolbar window) */
+.dark {
+  --background: #242628;
+  --foreground: #f1f3f4;
+  --card: #2d3032;
+  --card-foreground: #f1f3f4;
+  --popover: #2d3032;
+  --popover-foreground: #f1f3f4;
+  --primary: #4fb8a4;
+  --primary-foreground: #0f1f1b;
+  --primary-strong: #7fd3c2;
+  --primary-soft: #4fb8a426;
+  --secondary: #383b3e;
+  --secondary-foreground: #f1f3f4;
+  --muted: #303335;
+  --muted-foreground: #a7adb1;
+  --accent: #ffffff1a;
+  --accent-foreground: #ffffff;
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.704 0.191 22.216);
+  --border: #ffffff1a;
+  --input: #ffffff26;
+  --ring: #4fb8a4;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -47,6 +80,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -58,6 +93,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-header: var(--header);
+  --color-header-foreground: var(--header-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -75,4 +112,13 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* Local fonts only: the CSP blocks remote fonts, and the overlay must not phone home */
+@theme {
+  --font-sans:
+    'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui,
+    sans-serif;
+  --font-mono:
+    'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 }
