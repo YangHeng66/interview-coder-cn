@@ -8,17 +8,17 @@ export default function ShortcutRenderer({
   shortcut: string
   className?: string
 }) {
-  if (!shortcut) return <span className="text-xs text-neutral-400">未绑定</span>
+  if (!shortcut) return <span className="text-xs text-muted-foreground">未绑定</span>
   const keys = getShortcutAcceleratorDisplay(shortcut).split('+')
   return (
-    <span
-      className={cn(
-        'text-sm font-semibold rounded transition-colors bg-gray-200 hover:bg-gray-300 py-1 px-2 space-x-1',
-        className
-      )}
-    >
+    <span className={cn('inline-flex items-center gap-0.5 align-middle', className)}>
       {keys.map((key) => (
-        <span key={key}>{key}</span>
+        <kbd
+          key={key}
+          className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-b-2 border-input bg-muted px-1 font-mono text-[11px] leading-none font-medium text-foreground"
+        >
+          {key}
+        </kbd>
       ))}
     </span>
   )
