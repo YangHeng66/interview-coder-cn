@@ -25,7 +25,7 @@ export function KnowledgeSources({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 max-w-full gap-1.5 px-2 text-xs text-gray-100/75 hover:bg-white/10 hover:text-white"
+            className="h-7 max-w-full gap-1.5 px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <BookOpenText className="size-3.5 shrink-0" />
             <span className="truncate">{context.profileName}</span>
@@ -34,11 +34,11 @@ export function KnowledgeSources({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="max-h-80 w-[min(28rem,calc(100vw-2rem))] overflow-y-auto bg-gray-50 p-0 text-gray-900"
+          className="max-h-80 w-[min(28rem,calc(100vw-2rem))] overflow-y-auto bg-popover p-0 text-foreground"
         >
           <div className="border-b px-3 py-2.5">
             <p className="text-sm font-medium">本次使用的知识库</p>
-            <p className="mt-0.5 text-xs text-gray-500">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {isBuiltinOnly ? '只读内置资料：' : '岗位档案：'}
               {context.profileName}
             </p>
@@ -48,14 +48,14 @@ export function KnowledgeSources({
               {context.sources.map((source) => (
                 <div key={source.documentId} className="px-3 py-2.5">
                   <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
-                    <FileText className="size-4 shrink-0 text-gray-500" />
+                    <FileText className="size-4 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1 break-words">{source.name}</span>
-                    <span className="shrink-0 text-xs font-normal text-gray-500">
+                    <span className="shrink-0 text-xs font-normal text-muted-foreground">
                       {source.chunkCount} 个片段
                     </span>
                   </div>
                   {source.excerpts[0] && (
-                    <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap break-words text-xs leading-5 text-gray-600">
+                    <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap break-words text-xs leading-5 text-muted-foreground">
                       {source.excerpts[0]}
                     </p>
                   )}
@@ -63,7 +63,7 @@ export function KnowledgeSources({
               ))}
             </div>
           ) : (
-            <p className="px-3 py-4 text-sm text-gray-600">
+            <p className="px-3 py-4 text-sm text-muted-foreground">
               本次仅使用了公司、岗位和岗位描述，没有可用的文档片段。
             </p>
           )}

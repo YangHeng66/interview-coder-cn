@@ -81,7 +81,7 @@ export function ModelDiagnostics({
           ))}
         </div>
       </div>
-      <code className="block break-all text-xs text-neutral-600">
+      <code className="block break-all text-xs text-muted-foreground">
         {connection.apiBaseURL.trim()
           ? getApiEndpoint(connection.apiBaseURL, connection.apiProtocol)
           : '未配置地址'}

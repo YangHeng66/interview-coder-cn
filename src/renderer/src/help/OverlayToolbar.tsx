@@ -9,7 +9,7 @@ export function OverlayToolbarHelp() {
 
   return (
     <HelpSection Icon={PanelTop} title="悬浮工具条" description="用鼠标点击替代快捷键操作">
-      <p className="text-gray-700">
+      <p className="text-foreground/80">
         工具条悬浮在主窗口正上方，跟随主窗口移动、随主窗口一起隐藏，透明度也与主窗口保持一致，
         并且和主窗口一样在共享屏幕时对方不可见。它主要用于两种场景：一是快捷键与考试/面试软件冲突或注册失败时，
         二是不希望通过键盘触发操作时。
@@ -25,7 +25,7 @@ export function OverlayToolbarHelp() {
         {TOOLBAR_ACTIONS.map(({ action, Icon, label }) => (
           <div
             key={action}
-            className="flex items-center gap-2 rounded border border-gray-400 px-2 py-1"
+            className="flex items-center gap-2 rounded border border-border px-2 py-1"
           >
             <Icon className="h-4 w-4 shrink-0" />
             <span className="text-sm">{label}</span>
@@ -35,7 +35,7 @@ export function OverlayToolbarHelp() {
           </div>
         ))}
       </div>
-      <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
+      <ul className="space-y-1 text-sm text-foreground/80 list-disc list-inside">
         <li>点击按钮不会抢走焦点，做题页面不会失焦，光标也不会有明显的窗口切换动作。</li>
         <li>开启「鼠标穿透」后主窗口不再响应鼠标，但工具条仍然可以点击。</li>
         <li>

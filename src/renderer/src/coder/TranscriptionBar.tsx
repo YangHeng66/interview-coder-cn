@@ -137,7 +137,7 @@ export function TranscriptionBar({
         <span>{confirmedText}</span>
         <span className="text-amber-100/70">{partialText}</span>
         {!transcriptionText && (
-          <span className="text-neutral-400">
+          <span className="text-muted-foreground">
             {isPaused ? '语音识别已暂停' : '等待语音输入...'}
           </span>
         )}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pointer, PointerOff, OctagonX, MessageCircle } from 'lucide-react'
+import { Loader2, Pointer, PointerOff, OctagonX, MessageCircle } from 'lucide-react'
 import { useSolutionStore } from '@/lib/store/solution'
 import { useShortcutsStore } from '@/lib/store/shortcuts'
 import { useAppStore } from '@/lib/store/app'
@@ -50,81 +50,58 @@ export function AppStatusBar() {
     }
   }
 
-  // Check if there's an active conversation
   const hasActiveConversation = screenshotData && solutionChunks.length > 0
 
   return (
-    <div className="screenshot-status flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/10 px-4 py-2 text-neutral-200">
+    <div className="screenshot-status flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-2 text-sm text-muted-foreground">
       <div>
         {isReceivingSolution ? (
-          <div className="flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-r-2 border-[currentColor]"></div>
-            <span className="text-sm">正在生成...</span>
-            <div className="flex justify-center">
-              <Button
-                variant="secondary"
-                className="h-8 px-4 text-base shadow-lg pointer-events-auto"
-                onClick={handleStop}
-              >
-                <OctagonX className="w-4 h-4" />
-                停止生成
-                <ShortcutRenderer
-                  shortcut={shortcuts.stopSolutionStream.key}
-                  className="inline-block border bg-transparent py-0 px-1"
-                />
-              </Button>
-            </div>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-2 text-foreground" role="status">
+              <Loader2 className="size-4 animate-spin" />
+              正在生成…
+            </span>
+            <Button variant="secondary" size="sm" onClick={handleStop}>
+              <OctagonX />
+              停止生成
+              <ShortcutRenderer shortcut={shortcuts.stopSolutionStream.key} />
+            </Button>
           </div>
         ) : hasActiveConversation ? (
-          <div className="flex items-center space-x-2 pointer-events-none opacity-50 text-sm gap-1">
-            <span>
-              <ShortcutRenderer
-                shortcut={shortcuts.appendScreenshot.key}
-                className="inline-block scale-75 text-xs border border-current bg-transparent py-0 px-1 ml-1"
-              />
+          <div className="flex items-center gap-4 select-none">
+            <span className="flex items-center gap-1.5">
+              <ShortcutRenderer shortcut={shortcuts.appendScreenshot.key} />
               追加截图
             </span>
-            <span>
-              <ShortcutRenderer
-                shortcut={shortcuts.takeScreenshot.key}
-                className="inline-block scale-75 text-xs border border-current bg-transparent py-0 px-1"
-              />
+            <span className="flex items-center gap-1.5">
+              <ShortcutRenderer shortcut={shortcuts.takeScreenshot.key} />
               新开对话
             </span>
           </div>
         ) : null}
       </div>
-      <div className="flex items-center space-x-4 select-none">
-        {/* Follow-up Question Button */}
+      <div className="flex items-center gap-3 select-none">
         {hasActiveConversation && !isReceivingSolution && (
           <Button
             variant="ghost"
             size="sm"
             onClick={handleFollowUpClick}
-            className="h-7 px-3 text-xs"
-            disabled={isReceivingSolution}
+            className="text-foreground hover:bg-accent dark:hover:bg-accent"
           >
-            <MessageCircle className="w-4 h-4 mr-1" />
+            <MessageCircle />
             追问问题
           </Button>
         )}
-        {/* Mouse Status Indicator */}
-        <div className="flex items-center">
-          {ignoreMouse ? (
-            <>
-              <PointerOff className="w-4 h-4 mr-2" />
-              <span className="text-xs">
-                取消鼠标透传
-                <ShortcutRenderer
-                  shortcut={shortcuts.ignoreOrEnableMouse.key}
-                  className="inline-block scale-75 text-xs border border-current bg-transparent py-0 px-1"
-                />
-              </span>
-            </>
-          ) : (
-            <Pointer className="w-4 h-4" />
-          )}
-        </div>
+        {ignoreMouse ? (
+          <span className="flex items-center gap-1.5 text-xs text-amber-200">
+            <PointerOff className="size-4" />
+            鼠标透传中，按
+            <ShortcutRenderer shortcut={shortcuts.ignoreOrEnableMouse.key} />
+            取消
+          </span>
+        ) : (
+          <Pointer className="size-4" aria-hidden />
+        )}
       </div>
 
       {/* Follow-up Question Dialog */}

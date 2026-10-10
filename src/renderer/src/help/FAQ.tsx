@@ -33,7 +33,7 @@ const faqs = [
           href="https://github.com/YangHeng66/interview-coder-cn#关于隐身能力的说明"
           target="_blank"
           rel="noreferrer"
-          className="text-blue-600 hover:underline"
+          className="text-primary hover:underline"
         >
           项目说明
         </a>
@@ -68,7 +68,9 @@ const faqs = [
         语音转录功能可以实时将面试官的语音或题目朗读转为文字，辅助 AI
         更好地理解题意。使用前需在「设置」中配置所选语音服务商的 API Key，然后按下
         <ShortcutRenderer shortcut={`${platformAlt}+T`} className="text-xs mx-1" />
-        开始/暂停转录。识别过程中可点击转录条上的暂停按钮，保留已识别文本，之后点击继续即可重新建立识别连接；暂停只停止新的语音采集，当前 AI 回答不会被中断，需要停止回答时使用输入区的停止按钮。可在「设置」中选择系统音频、麦克风或混合来源；混合来源会同时采集两路声音，但不会标注说话人。转录文本既可在截图时附带，也可随时单独发送到文字对话。
+        开始/暂停转录。识别过程中可点击转录条上的暂停按钮，保留已识别文本，之后点击继续即可重新建立识别连接；暂停只停止新的语音采集，当前
+        AI
+        回答不会被中断，需要停止回答时使用输入区的停止按钮。可在「设置」中选择系统音频、麦克风或混合来源；混合来源会同时采集两路声音，但不会标注说话人。转录文本既可在截图时附带，也可随时单独发送到文字对话。
       </span>
     )
   },
@@ -76,7 +78,9 @@ const faqs = [
     question: '识别过程中如何让 AI 回答当前语音？',
     answer: (
       <span>
-        若希望无需手动发送，请在「设置 → 语音转录」打开「语音自动回答」。在文字对话模式下，检测到句末或短暂停顿后会自动提交；AI 正在回答时，新的完整语音会中止当前回答并按顺序继续处理。也可以继续按下
+        若希望无需手动发送，请在「设置 →
+        语音转录」打开「语音自动回答」。在文字对话模式下，检测到句末或短暂停顿后会自动提交；AI
+        正在回答时，新的完整语音会中止当前回答并按顺序继续处理。也可以继续按下
         <ShortcutRenderer shortcut="CommandOrControl+Alt+Enter" className="text-xs mx-1" />
         手动提交当前转录，语音识别会继续运行，已经发送的部分不会重复出现。
       </span>
@@ -98,9 +102,9 @@ export function FAQ() {
   return (
     <HelpSection Icon={BookOpen} title="常见问题">
       {faqs.map((faq, index) => (
-        <div key={index} className="border border-gray-400 rounded-lg p-4">
+        <div key={index} className="border border-border rounded-lg p-4">
           <h3 className="font-semibold mb-2">{faq.question}</h3>
-          <p className="text-sm text-gray-700">{faq.answer}</p>
+          <p className="text-sm text-foreground/80">{faq.answer}</p>
         </div>
       ))}
     </HelpSection>

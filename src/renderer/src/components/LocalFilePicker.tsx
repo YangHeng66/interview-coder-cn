@@ -105,7 +105,7 @@ export function LocalFilePicker() {
                   key={entry.path}
                   disabled={loading}
                   onClick={() => void browse(entry.path)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-neutral-100"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
                 >
                   <Folder className="size-4 shrink-0 text-amber-600" />
                   <span className="break-all">{entry.name}</span>
@@ -113,7 +113,7 @@ export function LocalFilePicker() {
               ) : (
                 <label
                   key={entry.path}
-                  className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100"
+                  className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
                 >
                   <input
                     type="checkbox"
@@ -129,7 +129,7 @@ export function LocalFilePicker() {
                       )
                     }
                   />
-                  <FileText className="size-4 shrink-0 text-neutral-500" />
+                  <FileText className="size-4 shrink-0 text-muted-foreground" />
                   <span className="break-all">{entry.name}</span>
                 </label>
               )
@@ -141,7 +141,7 @@ export function LocalFilePicker() {
           </p>
         )}
         <DialogFooter>
-          <span className="mr-auto min-w-0 break-all text-xs text-neutral-500">
+          <span className="mr-auto min-w-0 break-all text-xs text-muted-foreground">
             {request?.mode === 'files' ? `已选 ${selected.length} 个文件` : directory?.path}
           </span>
           <Button variant="outline" onClick={() => finish([])}>

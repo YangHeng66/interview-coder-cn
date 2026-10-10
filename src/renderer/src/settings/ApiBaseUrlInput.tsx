@@ -46,7 +46,7 @@ export function ApiBaseUrlInput({
           commit(event.currentTarget.value)
           event.currentTarget.blur()
         }}
-        className="h-9 min-w-0 flex-1 rounded-l-md border border-r-0 border-gray-300 bg-white px-3 text-sm focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+        className="h-9 min-w-0 flex-1 rounded-l-md border border-r-0 border-input bg-background px-3 text-sm focus:z-10 focus:outline-none focus:ring-2 focus:ring-ring disabled:bg-muted disabled:text-muted-foreground"
         placeholder={placeholder}
       />
       <Popover open={open} onOpenChange={setOpen}>
@@ -56,18 +56,18 @@ export function ApiBaseUrlInput({
             disabled={disabled || historyItems.length === 0}
             aria-label="选择历史 API Base URL"
             data-tooltip={historyItems.length === 0 ? '暂无历史地址' : '历史地址'}
-            className="flex size-9 shrink-0 items-center justify-center rounded-r-md border border-gray-300 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-50"
+            className="flex size-9 shrink-0 items-center justify-center rounded-r-md border border-input bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-50"
           >
             <History className="size-4" />
           </button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-72 p-1.5">
-          <div className="px-2 py-1.5 text-xs font-medium text-gray-500">历史地址</div>
+          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">历史地址</div>
           <div className="max-h-52 overflow-y-auto">
             {historyItems.map((item) => (
               <div
                 key={item}
-                className="group flex min-w-0 items-center rounded-sm hover:bg-gray-100"
+                className="group flex min-w-0 items-center rounded-sm hover:bg-accent"
               >
                 <button
                   type="button"
@@ -86,8 +86,8 @@ export function ApiBaseUrlInput({
                   aria-label={`删除历史地址 ${item}`}
                   data-tooltip="删除历史地址"
                   className={cn(
-                    'mr-1 flex size-7 shrink-0 items-center justify-center rounded-sm text-gray-400',
-                    'hover:bg-white hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500'
+                    'mr-1 flex size-7 shrink-0 items-center justify-center rounded-sm text-muted-foreground',
+                    'hover:bg-background hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                   )}
                   onClick={() => onRemoveHistory(item)}
                 >

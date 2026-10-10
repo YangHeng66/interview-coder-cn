@@ -293,7 +293,7 @@ export default function CoderPage() {
 
   return (
     <div
-      className="coder-shell"
+      className="coder-shell dark"
       style={
         {
           '--reader-font-size': `${readerFontSize}px`,

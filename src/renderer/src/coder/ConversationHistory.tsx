@@ -123,7 +123,7 @@ export function ConversationHistory() {
                         {item.title}
                       </button>
                     )}
-                    <div className="mt-1 text-xs text-neutral-500">
+                    <div className="mt-1 text-xs text-muted-foreground">
                       {item.mode === 'chat' ? '文字' : '截图'} ·{' '}
                       {new Date(item.updatedAt).toLocaleString()}
                     </div>
@@ -195,7 +195,7 @@ export function ConversationHistory() {
                 </div>
               ))}
             {!items.length && (
-              <p className="py-10 text-center text-sm text-neutral-500">暂无历史会话</p>
+              <p className="py-10 text-center text-sm text-muted-foreground">暂无历史会话</p>
             )}
           </div>
           {message && (

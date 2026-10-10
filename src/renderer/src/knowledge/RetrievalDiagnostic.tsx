@@ -67,7 +67,7 @@ export function RetrievalDiagnostic({
           检索
         </Button>
       </form>
-      <label className="my-4 flex items-center gap-2 text-xs text-neutral-600">
+      <label className="my-4 flex items-center gap-2 text-xs text-muted-foreground">
         <Switch
           aria-label="诊断包含内置资料"
           checked={builtin}
@@ -148,17 +148,17 @@ export function RetrievalDiagnostic({
                     ) : (
                       <ChevronRight className="mt-0.5 size-4 shrink-0" />
                     )}
-                    <span className="text-xs tabular-nums text-neutral-400">{index + 1}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{index + 1}</span>
                     <span className="min-w-0 flex-1 break-all text-sm font-medium">
                       {passage.documentName}
                     </span>
                     {'score' in passage && (
-                      <span className="shrink-0 text-xs tabular-nums text-neutral-500">
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                         {Number(passage.score).toFixed(2)}
                       </span>
                     )}
                   </button>
-                  <p className="ml-8 mt-1 text-xs text-neutral-500">
+                  <p className="ml-8 mt-1 text-xs text-muted-foreground">
                     片段 {passage.order + 1} · {passage.text.length} 字符
                   </p>
                   <pre
@@ -169,7 +169,7 @@ export function RetrievalDiagnostic({
                 </article>
               ))}
               {(view === 'selected' ? result.passages : result.candidates).length === 0 && (
-                <p className="py-10 text-center text-sm text-neutral-500">未命中相关资料</p>
+                <p className="py-10 text-center text-sm text-muted-foreground">未命中相关资料</p>
               )}
             </div>
           )}

@@ -26,7 +26,9 @@ export function ReaderBar() {
   return (
     <div className="reader-bar">
       <ConversationHistory />
-      <span className="text-xs text-neutral-400">{mode === 'chat' ? '文字对话' : '截图分析'}</span>
+      <span className="text-xs text-muted-foreground">
+        {mode === 'chat' ? '文字对话' : '截图分析'}
+      </span>
       <div className="ml-auto flex items-center gap-1">
         {mode === 'screenshot' && (
           <button

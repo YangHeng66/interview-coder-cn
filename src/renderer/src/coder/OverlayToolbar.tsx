@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { TOOLBAR_ACTIONS, type ToolbarActionName } from '@/lib/toolbar-actions'
 import type { LucideIcon } from 'lucide-react'
 
@@ -25,7 +25,7 @@ export function OverlayToolbar() {
   }, [])
 
   return (
-    <div className="overlay-toolbar overlay-toolbar-root">
+    <div className="overlay-toolbar overlay-toolbar-root dark">
       {TOOLBAR_ACTIONS.map(({ action, Icon, label }) => (
         <ToolbarButton
           key={action}
@@ -81,9 +81,8 @@ function ToolbarButton({
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <IconButton
+      className="text-header-foreground/80"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={cancelDwell}
       onClick={() => {
@@ -96,6 +95,6 @@ function ToolbarButton({
       {isDwelling && (
         <span className="dwell-progress" style={{ animationDuration: `${hoverDelay}ms` }} />
       )}
-    </Button>
+    </IconButton>
   )
 }

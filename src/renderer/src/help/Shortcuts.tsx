@@ -22,7 +22,7 @@ function ShortcutItemGroup({ category }: { category: string }) {
   const { shortcuts } = useShortcutsStore()
   return (
     <div className="space-y-2">
-      <h3 className="text-sm text-gray-500">{getCategoryName(category)}</h3>
+      <h3 className="text-sm text-muted-foreground">{getCategoryName(category)}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {Object.values(shortcuts)
           .filter((shortcut) => shortcut.category === category)
@@ -36,7 +36,7 @@ function ShortcutItemGroup({ category }: { category: string }) {
 
 function ShortcutItem({ action, shortcutKey }: { action: string; shortcutKey: string }) {
   return (
-    <div className="flex items-center justify-between rounded border border-gray-400 px-2 py-1">
+    <div className="flex items-center justify-between rounded border border-border px-2 py-1">
       <span className="text-sm">{getShortcutDescription(action)}</span>
       <ShortcutRenderer shortcut={shortcutKey} className="select-none" />
     </div>

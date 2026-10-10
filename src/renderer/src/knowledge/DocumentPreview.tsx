@@ -74,7 +74,7 @@ export function DocumentPreview({
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <output className="text-xs text-neutral-500">
+          <output className="text-xs text-muted-foreground">
             {passages.length ? selected + 1 : 0} / {passages.length}
           </output>
           <Button

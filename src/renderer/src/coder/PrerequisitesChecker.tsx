@@ -76,14 +76,14 @@ export function PrerequisitesChecker() {
 
   return (
     <div className="fixed top-9 left-0 right-0 bottom-0 z-50 flex bg-black/50 p-4">
-      <div className="m-auto max-h-full w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 text-neutral-900 shadow-lg">
+      <div className="m-auto max-h-full w-full max-w-md overflow-y-auto rounded-lg bg-background p-5 text-foreground shadow-lg">
         <h1 className="mb-4 text-center text-xl font-bold">配置 AI 模型</h1>
 
-        <div className="mb-4 grid grid-cols-2 rounded-md bg-gray-100 p-1">
+        <div className="mb-4 grid grid-cols-2 rounded-md bg-muted p-1">
           <button
             type="button"
             className={`flex h-8 items-center justify-center gap-2 rounded-sm text-sm ${
-              setupMode === 'screenshot' ? 'bg-white shadow-sm' : 'text-gray-500'
+              setupMode === 'screenshot' ? 'bg-background shadow-sm' : 'text-muted-foreground'
             }`}
             onClick={() => setSetupMode('screenshot')}
           >
@@ -93,7 +93,7 @@ export function PrerequisitesChecker() {
           <button
             type="button"
             className={`flex h-8 items-center justify-center gap-2 rounded-sm text-sm ${
-              setupMode === 'chat' ? 'bg-white shadow-sm' : 'text-gray-500'
+              setupMode === 'chat' ? 'bg-background shadow-sm' : 'text-muted-foreground'
             }`}
             onClick={() => setSetupMode('chat')}
           >
@@ -110,7 +110,7 @@ export function PrerequisitesChecker() {
                   value={inputApiProtocol}
                   onValueChange={(value) => setInputApiProtocol(value as ApiProtocol)}
                 >
-                  <SelectTrigger className="w-full bg-white">
+                  <SelectTrigger className="w-full bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -125,7 +125,7 @@ export function PrerequisitesChecker() {
                   type="text"
                   value={inputApiBaseURL}
                   onChange={(event) => setInputApiBaseURL(event.target.value)}
-                  className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder={
                     inputApiProtocol === 'responses'
                       ? 'https://api.example.com'
@@ -149,7 +149,7 @@ export function PrerequisitesChecker() {
                     }
                   }}
                 >
-                  <SelectTrigger className="w-full bg-white">
+                  <SelectTrigger className="w-full bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -165,7 +165,7 @@ export function PrerequisitesChecker() {
                       value={inputChatApiProtocol}
                       onValueChange={(value) => setInputChatApiProtocol(value as ApiProtocol)}
                     >
-                      <SelectTrigger className="w-full bg-white">
+                      <SelectTrigger className="w-full bg-background">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -180,7 +180,7 @@ export function PrerequisitesChecker() {
                       type="text"
                       value={inputChatApiBaseURL}
                       onChange={(event) => setInputChatApiBaseURL(event.target.value)}
-                      className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       placeholder="https://api.example.com/v1"
                     />
                   </Field>
@@ -210,7 +210,7 @@ export function PrerequisitesChecker() {
                   if (setupMode === 'screenshot') setInputApiKey(event.target.value)
                   else setInputChatApiKey(event.target.value)
                 }}
-                className="h-9 min-w-0 flex-1 rounded-l-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="h-9 min-w-0 flex-1 rounded-l-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="请输入 API Key"
               />
               <Button
@@ -248,7 +248,7 @@ export function PrerequisitesChecker() {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block text-sm font-medium text-gray-700">
+    <label className="block text-sm font-medium text-foreground/80">
       <span className="mb-1 block">{label}</span>
       {children}
     </label>

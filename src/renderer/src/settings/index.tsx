@@ -7,8 +7,6 @@ import {
   Shield,
   Bot,
   MessageCircle,
-  Eye,
-  EyeOff,
   Keyboard,
   FolderOpen,
   Mic,
@@ -52,6 +50,7 @@ import { SelectModel } from './SelectModel'
 import { ThinkingEffortSlider } from './ThinkingEffortSlider'
 import { ModelDiagnostics } from './ModelDiagnostics'
 import { ReaderPreferences } from './ReaderPreferences'
+import { SecretInput } from '@/components/SecretInput'
 import { chooseLocalFiles } from '@/lib/local-file-picker'
 import { CustomShortcuts, ResetDefaultShortcuts } from './CustomShortcuts'
 import {
@@ -108,10 +107,6 @@ export default function SettingsPage() {
     addScene,
     removeScene
   } = useSettingsStore()
-  const [showApiKey, setShowApiKey] = useState(false)
-  const [showChatApiKey, setShowChatApiKey] = useState(false)
-  const [showDashscopeApiKey, setShowDashscopeApiKey] = useState(false)
-  const [showVolcengineApiKey, setShowVolcengineApiKey] = useState(false)
   const [addSceneOpen, setAddSceneOpen] = useState(false)
   const [newSceneName, setNewSceneName] = useState('')
   const [sceneToDelete, setSceneToDelete] = useState<string | null>(null)
@@ -164,22 +159,27 @@ export default function SettingsPage() {
   return (
     <>
       {/* Header */}
-      <div id="app-header" className="flex items-center">
+      <div id="app-header" className="dark flex items-center">
         <div className="actions">
-          <Button variant="ghost" asChild size="icon" className="w-12 mr-2 rounded-none">
-            <Link to="/">
-              <ArrowLeft className="h-5 w-5" />
+          <Button
+            variant="ghost"
+            asChild
+            size="icon"
+            className="mr-2 h-9 w-12 rounded-none text-muted-foreground hover:text-accent-foreground dark:hover:bg-accent"
+          >
+            <Link to="/" aria-label="返回主界面">
+              <ArrowLeft className="size-5" />
             </Link>
           </Button>
         </div>
-        <h1>设置</h1>
+        <h1 className="text-sm font-medium">设置</h1>
       </div>
 
       {/* Settings Content */}
-      <div id="app-content" className="settings-content flex flex-col gap-4 p-8">
+      <div id="app-content" className="settings-content">
         <ReaderPreferences />
         {/* Screenshot model settings */}
-        <div className="bg-gray-300/80 rounded-lg p-6">
+        <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <Bot className="h-5 w-5 mr-2" />
             截图模型
@@ -194,7 +194,7 @@ export default function SettingsPage() {
                 value={apiProtocol}
                 onValueChange={(value) => updateSetting('apiProtocol', value as ApiProtocol)}
               >
-                <SelectTrigger id="api-protocol" className="w-60 bg-white">
+                <SelectTrigger id="api-protocol" className="w-60 bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -233,26 +233,13 @@ export default function SettingsPage() {
               <label htmlFor="api-key" className="text-sm font-medium">
                 API Key
               </label>
-              <div className="flex items-center w-60">
-                <input
-                  id="api-key"
-                  type={showApiKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => updateSetting('apiKey', e.target.value)}
-                  onBlur={(e) => updateSetting('apiKey', e.target.value.trim())}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="输入 API Key"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="border border-l-0 rounded-l-none rounded-r-md h-9 w-9 hover:border-none"
-                  aria-label={showApiKey ? '隐藏 API Key' : '显示 API Key'}
-                >
-                  {showApiKey ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                </Button>
-              </div>
+              <SecretInput
+                id="api-key"
+                value={apiKey}
+                onChange={(value) => updateSetting('apiKey', value)}
+                placeholder="输入 API Key"
+                label="API Key"
+              />
             </div>
 
             <div className="flex items-center justify-between">
@@ -291,7 +278,7 @@ export default function SettingsPage() {
           }}
         />
         {/* Text chat model settings */}
-        <div className="bg-gray-300/80 rounded-lg p-6">
+        <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <MessageCircle className="h-5 w-5 mr-2" />
             文字对话模型
@@ -315,7 +302,7 @@ export default function SettingsPage() {
                   }
                 }}
               >
-                <SelectTrigger id="chat-provider" className="w-60 bg-white">
+                <SelectTrigger id="chat-provider" className="w-60 bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -334,7 +321,7 @@ export default function SettingsPage() {
                 disabled={chatProvider === 'deepseek'}
                 onValueChange={(value) => updateSetting('chatApiProtocol', value as ApiProtocol)}
               >
-                <SelectTrigger id="chat-api-protocol" className="w-60 bg-white">
+                <SelectTrigger id="chat-api-protocol" className="w-60 bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -369,26 +356,13 @@ export default function SettingsPage() {
               <label htmlFor="chat-api-key" className="text-sm font-medium">
                 API Key
               </label>
-              <div className="flex items-center w-60">
-                <input
-                  id="chat-api-key"
-                  type={showChatApiKey ? 'text' : 'password'}
-                  value={chatApiKey}
-                  onChange={(e) => updateSetting('chatApiKey', e.target.value)}
-                  onBlur={(e) => updateSetting('chatApiKey', e.target.value.trim())}
-                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-l-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="输入对话模型 API Key"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowChatApiKey(!showChatApiKey)}
-                  className="border border-l-0 rounded-l-none rounded-r-md h-9 w-9 hover:border-none"
-                  aria-label={showChatApiKey ? '隐藏对话 API Key' : '显示对话 API Key'}
-                >
-                  {showChatApiKey ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                </Button>
-              </div>
+              <SecretInput
+                id="chat-api-key"
+                value={chatApiKey}
+                onChange={(value) => updateSetting('chatApiKey', value)}
+                placeholder="输入对话模型 API Key"
+                label="对话 API Key"
+              />
             </div>
 
             <div className="flex items-center justify-between">
@@ -425,7 +399,7 @@ export default function SettingsPage() {
                 id="chat-system-prompt"
                 value={chatSystemPrompt}
                 onChange={(e) => updateSetting('chatSystemPrompt', e.target.value)}
-                className="mt-2 w-full min-h-24 max-h-64 bg-white"
+                className="mt-2 w-full min-h-24 max-h-64 bg-background"
                 rows={4}
               />
             </div>
@@ -441,7 +415,7 @@ export default function SettingsPage() {
           }}
         />
         {/* Transcription Settings */}
-        <div className="bg-gray-300/80 rounded-lg p-6">
+        <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <Mic className="h-5 w-5 mr-2" />
             语音转录
@@ -451,7 +425,7 @@ export default function SettingsPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <label htmlFor="transcription-audio-source" className="min-w-0 text-sm font-medium">
                 <span className="block">音频来源</span>
-                <span className="block text-xs font-normal text-gray-600">
+                <span className="block text-xs font-normal text-muted-foreground">
                   可同时识别你的麦克风和系统回环声音
                 </span>
               </label>
@@ -461,7 +435,7 @@ export default function SettingsPage() {
                   updateSetting('transcriptionAudioSource', value as TranscriptionAudioSource)
                 }
               >
-                <SelectTrigger id="transcription-audio-source" className="w-60 bg-white">
+                <SelectTrigger id="transcription-audio-source" className="w-60 bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -472,10 +446,10 @@ export default function SettingsPage() {
               </Select>
             </div>
 
-            <div className="flex items-center justify-between gap-4 rounded-md border border-gray-400/50 bg-white/40 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-background px-3 py-2.5">
               <label htmlFor="transcription-auto-reply" className="min-w-0 text-sm font-medium">
                 <span className="block">语音自动回答</span>
-                <span className="mt-0.5 block text-xs font-normal text-gray-600">
+                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
                   文字对话中检测到句末或停顿后自动发送；关闭时仍可手动发送转写
                 </span>
               </label>
@@ -497,7 +471,7 @@ export default function SettingsPage() {
                   updateSetting('transcriptionProvider', value as TranscriptionProvider)
                 }
               >
-                <SelectTrigger id="transcription-provider" className="w-60 bg-white">
+                <SelectTrigger id="transcription-provider" className="w-60 bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -516,49 +490,31 @@ export default function SettingsPage() {
                       href="https://bailian.console.aliyun.com/cn-beijing?tab=model#/api-key"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-2 text-xs font-light text-blue-700 hover:underline"
+                      className="ml-2 text-xs font-light text-primary hover:underline"
                     >
                       获取 Key
                     </a>
                   </label>
-                  <div className="flex w-60 items-center">
-                    <input
-                      id="dashscope-api-key"
-                      type={showDashscopeApiKey ? 'text' : 'password'}
-                      value={dashscopeApiKey}
-                      onChange={(e) => updateSetting('dashscopeApiKey', e.target.value)}
-                      onBlur={(e) => updateSetting('dashscopeApiKey', e.target.value.trim())}
-                      className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="输入百炼平台 API Key"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowDashscopeApiKey(!showDashscopeApiKey)}
-                      className="border border-l-0 rounded-l-none rounded-r-md h-9 w-9 hover:border-none"
-                      aria-label={showDashscopeApiKey ? '隐藏百炼 API Key' : '显示百炼 API Key'}
-                    >
-                      {showDashscopeApiKey ? (
-                        <Eye className="h-4 w-4" />
-                      ) : (
-                        <EyeOff className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <SecretInput
+                    id="dashscope-api-key"
+                    value={dashscopeApiKey}
+                    onChange={(value) => updateSetting('dashscopeApiKey', value)}
+                    placeholder="输入百炼平台 API Key"
+                    label="百炼 API Key"
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <label htmlFor="dashscope-asr-model" className="text-sm font-medium">
                     模型名称
                   </label>
-                  <input
+                  <Input
                     id="dashscope-asr-model"
                     type="text"
                     value={dashscopeAsrModel}
                     onChange={(e) => updateSetting('dashscopeAsrModel', e.target.value)}
                     onBlur={(e) => updateSetting('dashscopeAsrModel', e.target.value.trim())}
-                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-60 bg-background"
                     placeholder="fun-asr-realtime"
                   />
                 </div>
@@ -567,13 +523,13 @@ export default function SettingsPage() {
                   <label htmlFor="dashscope-asr-ws-url" className="text-sm font-medium">
                     WebSocket 地址
                   </label>
-                  <input
+                  <Input
                     id="dashscope-asr-ws-url"
                     type="text"
                     value={dashscopeAsrWsUrl}
                     onChange={(e) => updateSetting('dashscopeAsrWsUrl', e.target.value)}
                     onBlur={(e) => updateSetting('dashscopeAsrWsUrl', e.target.value.trim())}
-                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-60 bg-background"
                     placeholder="wss://dashscope.aliyuncs.com/..."
                   />
                 </div>
@@ -587,49 +543,31 @@ export default function SettingsPage() {
                       href="https://console.volcengine.com/speech/new/setting/apikeys?projectName=default"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-2 text-xs font-light text-blue-700 hover:underline"
+                      className="ml-2 text-xs font-light text-primary hover:underline"
                     >
                       获取 Key
                     </a>
                   </label>
-                  <div className="flex w-60 items-center">
-                    <input
-                      id="volcengine-asr-api-key"
-                      type={showVolcengineApiKey ? 'text' : 'password'}
-                      value={volcengineAsrApiKey}
-                      onChange={(e) => updateSetting('volcengineAsrApiKey', e.target.value)}
-                      onBlur={(e) => updateSetting('volcengineAsrApiKey', e.target.value.trim())}
-                      className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="输入豆包语音 API Key"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowVolcengineApiKey(!showVolcengineApiKey)}
-                      className="border border-l-0 rounded-l-none rounded-r-md h-9 w-9 hover:border-none"
-                      aria-label={showVolcengineApiKey ? '隐藏豆包 API Key' : '显示豆包 API Key'}
-                    >
-                      {showVolcengineApiKey ? (
-                        <Eye className="h-4 w-4" />
-                      ) : (
-                        <EyeOff className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <SecretInput
+                    id="volcengine-asr-api-key"
+                    value={volcengineAsrApiKey}
+                    onChange={(value) => updateSetting('volcengineAsrApiKey', value)}
+                    placeholder="输入豆包语音 API Key"
+                    label="豆包 API Key"
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <label htmlFor="volcengine-asr-model" className="text-sm font-medium">
                     模型名称
                   </label>
-                  <input
+                  <Input
                     id="volcengine-asr-model"
                     type="text"
                     value={volcengineAsrModel}
                     onChange={(e) => updateSetting('volcengineAsrModel', e.target.value)}
                     onBlur={(e) => updateSetting('volcengineAsrModel', e.target.value.trim())}
-                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-60 bg-background"
                     placeholder="bigmodel"
                   />
                 </div>
@@ -639,13 +577,13 @@ export default function SettingsPage() {
                     资源 ID
                     <span className="ml-2 text-xs font-light">默认 ASR 2.0 小时版</span>
                   </label>
-                  <input
+                  <Input
                     id="volcengine-asr-resource-id"
                     type="text"
                     value={volcengineAsrResourceId}
                     onChange={(e) => updateSetting('volcengineAsrResourceId', e.target.value)}
                     onBlur={(e) => updateSetting('volcengineAsrResourceId', e.target.value.trim())}
-                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-60 bg-background"
                     placeholder="volc.seedasr.sauc.duration"
                   />
                 </div>
@@ -654,13 +592,13 @@ export default function SettingsPage() {
                   <label htmlFor="volcengine-asr-ws-url" className="text-sm font-medium">
                     WebSocket 地址
                   </label>
-                  <input
+                  <Input
                     id="volcengine-asr-ws-url"
                     type="text"
                     value={volcengineAsrWsUrl}
                     onChange={(e) => updateSetting('volcengineAsrWsUrl', e.target.value)}
                     onBlur={(e) => updateSetting('volcengineAsrWsUrl', e.target.value.trim())}
-                    className="w-60 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-60 bg-background"
                     placeholder="wss://openspeech.bytedance.com/..."
                   />
                 </div>
@@ -670,7 +608,7 @@ export default function SettingsPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <label className="min-w-0 text-sm font-medium">
                 音频输入设备
-                <span className="block text-xs font-normal text-gray-600">
+                <span className="block text-xs font-normal text-muted-foreground">
                   {transcriptionAudioSource === 'system'
                     ? '系统音频模式不使用麦克风设备'
                     : '选择麦克风；留空使用系统默认麦克风'}
@@ -683,7 +621,7 @@ export default function SettingsPage() {
                   updateSetting('audioInputDeviceId', val === 'default' ? '' : val)
                 }
               >
-                <SelectTrigger className="w-60 bg-white">
+                <SelectTrigger className="w-60 bg-background">
                   <SelectValue placeholder="系统默认麦克风" />
                 </SelectTrigger>
                 <SelectContent>
@@ -710,7 +648,7 @@ export default function SettingsPage() {
                   updateSetting('audioOutputDeviceId', val === 'default' ? '' : val)
                 }
               >
-                <SelectTrigger className="w-60 bg-white">
+                <SelectTrigger className="w-60 bg-background">
                   <SelectValue placeholder="默认设备" />
                 </SelectTrigger>
                 <SelectContent>
@@ -727,7 +665,7 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-gray-300/80 rounded-lg p-6">
+        <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <SquareTerminal className="h-5 w-5 mr-2" />
             解题设置
@@ -748,8 +686,8 @@ export default function SettingsPage() {
                     className={cn(
                       'group flex items-center rounded-full border text-sm transition-colors cursor-pointer select-none',
                       scene.id === activeSceneId
-                        ? 'bg-blue-600 border-blue-600 text-white'
-                        : 'bg-white border-gray-300 hover:border-blue-400'
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'bg-background border-input hover:border-primary'
                     )}
                     onClick={() => setActiveScene(scene.id)}
                   >
@@ -771,7 +709,7 @@ export default function SettingsPage() {
                   </div>
                 ))}
                 <button
-                  className="flex items-center gap-1 rounded-full border border-dashed border-gray-400 bg-transparent px-3 py-1 text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors"
+                  className="flex items-center gap-1 rounded-full border border-dashed border-input bg-transparent px-3 py-1 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
                   onClick={() => setAddSceneOpen(true)}
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -789,7 +727,7 @@ export default function SettingsPage() {
                   </label>
                   {activeScene.isPreset && (
                     <button
-                      className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                       data-tooltip="恢复该场景的默认提示词"
                       onClick={handleResetScenePrompt}
                     >
@@ -802,7 +740,7 @@ export default function SettingsPage() {
                   value={activeScene.prompt}
                   onChange={(e) => updateScenePrompt(activeScene.id, e.target.value)}
                   placeholder="请输入该场景的系统提示词, 示例: 你是一个解题助手, 请根据「截图」和「语音转录内容」给出相关回答。"
-                  className="w-full min-h-24 max-h-100 bg-white"
+                  className="w-full min-h-24 max-h-100 bg-background"
                   rows={6}
                 />
               </div>
@@ -865,7 +803,7 @@ export default function SettingsPage() {
         </Dialog>
 
         {/* Appearance Settings */}
-        <div className="bg-gray-300/80 rounded-lg p-6">
+        <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <Palette className="h-5 w-5 mr-2" />
             外观设置
@@ -921,7 +859,7 @@ export default function SettingsPage() {
                   value={String(toolbarHoverDelay)}
                   onValueChange={(val) => updateSetting('toolbarHoverDelay', Number(val))}
                 >
-                  <SelectTrigger className="w-60 bg-white">
+                  <SelectTrigger className="w-60 bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -937,7 +875,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Shortcuts Settings */}
-        <div className="bg-gray-300/80 rounded-lg p-6">
+        <div>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex shrink-0 items-center text-lg font-semibold">
               <Keyboard className="h-5 w-5 mr-2" />
@@ -949,7 +887,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Screenshot Save Settings */}
-        <div className="bg-gray-300/80 rounded-lg p-6">
+        <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <FolderOpen className="h-5 w-5 mr-2" />
             保存截图
@@ -978,7 +916,7 @@ export default function SettingsPage() {
                   </span>
                 </label>
                 <button
-                  className="text-xs text-gray-600 max-w-48 truncate hover:text-gray-900 cursor-pointer transition-colors"
+                  className="text-xs text-muted-foreground max-w-48 truncate hover:text-foreground cursor-pointer transition-colors"
                   data-tooltip="点击选择保存目录"
                   onClick={async () => {
                     const [dir] = await chooseLocalFiles({
@@ -998,7 +936,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Privacy Settings */}
-        <div className="bg-gray-300/80 rounded-lg p-6">
+        <div>
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             <Shield className="h-5 w-5 mr-2" />
             隐私设置

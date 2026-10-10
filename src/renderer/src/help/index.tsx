@@ -20,37 +20,42 @@ export default function HelpPage() {
   return (
     <>
       {/* Header */}
-      <div id="app-header" className="flex items-center">
+      <div id="app-header" className="dark flex items-center">
         <div className="actions">
-          <Button variant="ghost" asChild size="icon" className="w-12 mr-2 rounded-none">
-            <Link to="/">
-              <ArrowLeft className="h-5 w-5" />
+          <Button
+            variant="ghost"
+            asChild
+            size="icon"
+            className="mr-2 h-9 w-12 rounded-none text-muted-foreground hover:text-accent-foreground dark:hover:bg-accent"
+          >
+            <Link to="/" aria-label="返回主界面">
+              <ArrowLeft className="size-5" />
             </Link>
           </Button>
         </div>
-        <h1>帮助中心</h1>
+        <h1 className="text-sm font-medium">帮助中心</h1>
       </div>
 
       {/* Help Content */}
       <div id="app-content" className="flex flex-col gap-4 p-8">
         {/* Introduction */}
         <HelpSection Icon={Info} title="简介">
-          <p className="text-gray-700">
+          <p className="text-foreground/80">
             欢迎使用桌面多模态 AI 助手！无论是屏幕内容分析、文字对话还是实时语音场景，
             该工具都可以帮助您快速截图，分析屏幕内容，并给出解答建议。您可以访问本项目{' '}
             <a
               href="https://github.com/YangHeng66/interview-coder-cn#readme"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
             >
               GitHub 主页
             </a>{' '}
             获取更多帮助信息。
           </p>
-          <div className="bg-gray-700/10 rounded-lg p-4">
+          <div className="bg-muted rounded-lg p-4">
             <h3 className="font-semibold mb-2">主要功能：</h3>
-            <ul className="space-y-1 text-gray-700 list-disc list-inside">
+            <ul className="space-y-1 text-foreground/80 list-disc list-inside">
               <li className="flex gap-2">
                 <Camera className="h-6 w-4" />
                 <span>通过快捷键快速截图，并生成解题建议。</span>
@@ -77,23 +82,23 @@ export default function HelpPage() {
 
         {/* Quick Start */}
         <HelpSection Icon={Lightbulb} title="快速开始">
-          <div className="border border-gray-400 rounded-lg p-4">
+          <div className="border border-border rounded-lg p-4">
             <h3 className="font-semibold mb-2">1. 截取屏幕截图</h3>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-foreground/80">
               当您需要分析某个问题时，按下快捷键{' '}
               <ShortcutRenderer shortcut={`${platformAlt}+Enter`} className="text-xs mx-1" />
               截取当前屏幕。截图会立即显示在应用中。
             </p>
           </div>
-          <div className="border border-gray-400 rounded-lg p-4">
+          <div className="border border-border rounded-lg p-4">
             <h3 className="font-semibold mb-2">2. 查看结果</h3>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-foreground/80">
               截图完成后，系统会根据当前选择的提示词场景自动分析内容，给出解题思路和答案。
             </p>
           </div>
-          <div className="border border-gray-400 rounded-lg p-4">
+          <div className="border border-border rounded-lg p-4">
             <h3 className="font-semibold mb-2">3. 文字与语音对话</h3>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-foreground/80">
               在标题栏切换到「文字对话」，可直接输入问题；开始语音识别后，可从输入区或快捷键发送当前转录，也可以在设置中开启「语音自动回答」，让句末或停顿后的语音自动进入回答队列。
             </p>
           </div>
@@ -110,17 +115,17 @@ export default function HelpPage() {
 
         {/* Contact Support */}
         <HelpSection Icon={MessageCircle} title="联系支持">
-          <p className="text-gray-700">如果您遇到问题或有建议，请通过以下方式联系我们：</p>
+          <p className="text-foreground/80">如果您遇到问题或有建议，请通过以下方式联系我们：</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="border border-gray-400 rounded-lg p-4">
+            <div className="border border-border rounded-lg p-4">
               <h3 className="font-semibold mb-2 ">GitHub Issues</h3>
-              <p className="text-gray-700">
+              <p className="text-foreground/80">
                 在{' '}
                 <a
                   href="https://github.com/YangHeng66/interview-coder-cn/issues"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-blue-600 hover:underline"
+                  className="text-primary hover:underline"
                 >
                   GitHub Issues
                 </a>{' '}

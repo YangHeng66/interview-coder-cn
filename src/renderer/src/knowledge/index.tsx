@@ -304,15 +304,20 @@ export default function KnowledgePage() {
 
   return (
     <div className="knowledge-page">
-      <div id="app-header" className="flex items-center">
+      <div id="app-header" className="dark flex items-center">
         <div className="actions">
-          <Button variant="ghost" asChild size="icon" className="mr-2 w-12 rounded-none">
+          <Button
+            variant="ghost"
+            asChild
+            size="icon"
+            className="mr-2 h-9 w-12 rounded-none text-muted-foreground hover:text-accent-foreground dark:hover:bg-accent"
+          >
             <Link to="/" aria-label="返回主界面">
               <ArrowLeft className="size-5" />
             </Link>
           </Button>
         </div>
-        <h1>岗位知识库</h1>
+        <h1 className="text-sm font-medium">岗位知识库</h1>
       </div>
 
       <div className="knowledge-workspace">
@@ -337,7 +342,7 @@ export default function KnowledgePage() {
               placeholder="搜索岗位"
               value={profileSearch}
               onChange={(event) => setProfileSearch(event.target.value)}
-              className="h-8 bg-white text-xs"
+              className="h-8 bg-background text-xs"
             />
           </div>
           <button
@@ -370,7 +375,7 @@ export default function KnowledgePage() {
                         'flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left transition-colors',
                         selectedProfileId === profile.id
                           ? 'knowledge-profile-selected'
-                          : 'text-gray-700 hover:bg-white/40'
+                          : 'text-foreground/80 hover:bg-white/40'
                       )}
                       onClick={() => {
                         setBrowseAll(false)
@@ -383,7 +388,7 @@ export default function KnowledgePage() {
                         <span className="block break-words text-sm font-medium">
                           {profile.name}
                         </span>
-                        <span className="mt-0.5 block truncate text-xs text-gray-500">
+                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                           {[profile.company, profile.role].filter(Boolean).join(' · ') ||
                             `${profile.documentLinks.length} 篇资料`}
                         </span>
@@ -400,7 +405,7 @@ export default function KnowledgePage() {
                   ))}
               </div>
             ) : (
-              <div className="px-3 py-8 text-center text-sm text-gray-600">
+              <div className="px-3 py-8 text-center text-sm text-muted-foreground">
                 <BriefcaseBusiness className="mx-auto mb-2 size-6" />
                 暂无岗位档案
               </div>
@@ -414,7 +419,7 @@ export default function KnowledgePage() {
               <h2 className="break-words text-base font-semibold">
                 {selectedProfile?.name ?? '共享文档库'}
               </h2>
-              <p className="mt-1 text-xs text-neutral-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {selectedProfile
                   ? `${selectedProfile.documentLinks.length} 篇关联资料`
                   : `${snapshot.documents.length} 篇文档`}
@@ -499,14 +504,14 @@ export default function KnowledgePage() {
               <section aria-labelledby="builtin-knowledge-heading" className="knowledge-builtin">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex min-w-0 items-start gap-3">
-                    <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-sky-700/10 text-sky-800">
+                    <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary-strong">
                       <BookOpenText className="size-5" />
                     </span>
                     <div className="min-w-0">
                       <h2 id="builtin-knowledge-heading" className="text-base font-semibold">
                         前端开发通用知识
                       </h2>
-                      <p className="mt-1 text-xs text-neutral-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {BUILTIN_FRONTEND_KNOWLEDGE_TOPICS.length} 个主题 · 本地资料
                       </p>
                     </div>
@@ -528,14 +533,14 @@ export default function KnowledgePage() {
                   </label>
                 </div>
 
-                <div className="mt-4 divide-y divide-neutral-200">
+                <div className="mt-4 divide-y divide-border">
                   {BUILTIN_FRONTEND_KNOWLEDGE_TOPICS.map((topic) => (
                     <div key={topic.id} className="flex min-w-0 items-center gap-3 py-3">
                       <div className="min-w-0 flex-1">
-                        <p className="break-words text-sm font-medium text-gray-800">
+                        <p className="break-words text-sm font-medium text-foreground">
                           {topic.name}
                         </p>
-                        <p className="mt-1 break-words text-xs leading-5 text-gray-600">
+                        <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
                           {topic.summary}
                         </p>
                       </div>
@@ -612,20 +617,20 @@ export default function KnowledgePage() {
                             setDraft((value) => ({ ...value, name: event.target.value }))
                           }
                           maxLength={80}
-                          className="bg-white"
+                          className="bg-background"
                         />
                       </label>
                       <label className="space-y-1.5 text-sm font-medium">
                         公司
                         <div className="relative">
-                          <Building2 className="pointer-events-none absolute left-3 top-2.5 size-4 text-gray-400" />
+                          <Building2 className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
                           <Input
                             value={draft.company}
                             onChange={(event) =>
                               setDraft((value) => ({ ...value, company: event.target.value }))
                             }
                             maxLength={120}
-                            className="bg-white pl-9"
+                            className="bg-background pl-9"
                           />
                         </div>
                       </label>
@@ -637,7 +642,7 @@ export default function KnowledgePage() {
                             setDraft((value) => ({ ...value, role: event.target.value }))
                           }
                           maxLength={120}
-                          className="bg-white"
+                          className="bg-background"
                         />
                       </label>
                       <label className="space-y-1.5 text-sm font-medium sm:col-span-2">
@@ -649,18 +654,18 @@ export default function KnowledgePage() {
                           }
                           maxLength={30_000}
                           rows={8}
-                          className="resize-y bg-white leading-6"
+                          className="resize-y bg-background leading-6"
                           placeholder="粘贴岗位职责、技术要求和业务背景"
                         />
                       </label>
                     </div>
                   </section>
 
-                  <div className="my-6 border-t border-gray-400/50" />
+                  <div className="my-6 border-t border-border" />
                 </>
               ) : (
                 <section className="mb-6 py-5 text-center">
-                  <BriefcaseBusiness className="mx-auto mb-2 size-7 text-gray-500" />
+                  <BriefcaseBusiness className="mx-auto mb-2 size-7 text-muted-foreground" />
                   <h2 className="font-semibold">未选择岗位</h2>
                   <Button className="mt-3" size="sm" onClick={() => setCreateOpen(true)}>
                     <Plus className="size-4" />
@@ -676,7 +681,7 @@ export default function KnowledgePage() {
                     <h2 id="documents-heading" className="text-base font-semibold">
                       文档资料
                     </h2>
-                    <p className="mt-0.5 text-xs text-gray-600">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       支持 PDF、DOCX、TXT、Markdown；单文件不超过 10 MB
                     </p>
                   </div>
@@ -693,7 +698,7 @@ export default function KnowledgePage() {
 
                 <div className="knowledge-document-filters">
                   <div className="relative min-w-0 flex-1">
-                    <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-neutral-400" />
+                    <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                     <Input
                       aria-label="搜索知识库文档"
                       placeholder="搜索文档名称"
@@ -720,7 +725,7 @@ export default function KnowledgePage() {
                 </div>
                 <div className="knowledge-documents">
                   {visibleDocuments.length ? (
-                    <div className="divide-y divide-gray-300">
+                    <div className="divide-y divide-border">
                       {visibleDocuments.map((document) => {
                         const link = selectedProfile?.documentLinks.find(
                           (candidate) => candidate.documentId === document.id
@@ -737,10 +742,10 @@ export default function KnowledgePage() {
                               }
                               aria-label={`${link ? '取消关联' : '关联'}文档 ${document.name}`}
                             />
-                            <FileText className="size-4 shrink-0 text-gray-500" />
+                            <FileText className="size-4 shrink-0 text-muted-foreground" />
                             <div className="min-w-0 flex-1">
                               <p className="break-words text-sm font-medium">{document.name}</p>
-                              <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-gray-500">
+                              <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                                 <span>{formatFileSize(document.size)}</span>
                                 <span>
                                   {progress?.stage === 'extracting'
@@ -771,7 +776,9 @@ export default function KnowledgePage() {
                                   size="icon"
                                   className={cn(
                                     'size-8 shrink-0',
-                                    isKey ? 'text-amber-600 hover:text-amber-700' : 'text-gray-400'
+                                    isKey
+                                      ? 'text-amber-600 hover:text-amber-700'
+                                      : 'text-muted-foreground'
                                   )}
                                   onClick={() => toggleDocumentPriority(document.id, isKey)}
                                   disabled={Boolean(busyAction)}
@@ -813,7 +820,7 @@ export default function KnowledgePage() {
                       })}
                     </div>
                   ) : (
-                    <div className="px-4 py-10 text-center text-sm text-gray-600">
+                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">
                       <FileText className="mx-auto mb-2 size-6" />
                       {snapshot.documents.length ? '没有匹配的文档' : '尚未导入文档'}
                     </div>

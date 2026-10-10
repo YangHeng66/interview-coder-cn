@@ -1,7 +1,16 @@
 import { useState } from 'react'
-import { BookOpenText, Camera, HelpCircle, MessageCircle, SettingsIcon, X } from 'lucide-react'
+import {
+  BookOpenText,
+  Camera,
+  HelpCircle,
+  Library,
+  MessageCircle,
+  SettingsIcon,
+  X
+} from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import {
   Dialog,
   DialogContent,
@@ -100,8 +109,8 @@ export function AppHeader() {
       : NO_PROFILE_VALUE)
 
   return (
-    <div id="app-header" className="coder-header relative flex items-center px-2 text-white">
-      <div className="app-brand flex items-center gap-2 text-xs font-medium text-white/80">
+    <div id="app-header" className="coder-header dark relative flex items-center px-2">
+      <div className="app-brand flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <img
           src={appIcon}
           alt=""
@@ -116,8 +125,8 @@ export function AppHeader() {
           aria-pressed={assistantMode === 'screenshot'}
           className={`flex min-w-24 items-center justify-center gap-1.5 rounded px-2 text-xs transition-colors ${
             assistantMode === 'screenshot'
-              ? 'bg-white/20 text-white shadow-sm'
-              : 'text-white/65 hover:text-white'
+              ? 'bg-white/15 text-white shadow-sm'
+              : 'text-muted-foreground hover:text-white'
           }`}
           onClick={() => changeMode('screenshot')}
         >
@@ -129,8 +138,8 @@ export function AppHeader() {
           aria-pressed={assistantMode === 'chat'}
           className={`flex min-w-24 items-center justify-center gap-1.5 rounded px-2 text-xs transition-colors ${
             assistantMode === 'chat'
-              ? 'bg-white/20 text-white shadow-sm'
-              : 'text-white/65 hover:text-white'
+              ? 'bg-white/15 text-white shadow-sm'
+              : 'text-muted-foreground hover:text-white'
           }`}
           onClick={() => changeMode('chat')}
         >
@@ -145,10 +154,10 @@ export function AppHeader() {
         <Select value={selectedKnowledgeValue} onValueChange={requestProfileChange}>
           <SelectTrigger
             size="sm"
-            className="mr-1 hidden h-7 w-40 border-white/15 bg-black/10 text-xs text-white shadow-none hover:bg-white/10 md:flex [&_svg]:text-white/60"
+            className="mr-1 hidden h-7 w-40 border-white/15 bg-black/10 text-xs text-white shadow-none hover:bg-white/10 md:flex [&_svg]:text-muted-foreground"
             aria-label="当前知识库模式"
           >
-            <BookOpenText className="size-3.5 text-white/70" />
+            <BookOpenText className="size-3.5" />
             <SelectValue placeholder="未启用岗位" />
           </SelectTrigger>
           <SelectContent>
@@ -161,38 +170,22 @@ export function AppHeader() {
             ))}
           </SelectContent>
         </Select>
-        <Button
-          variant="ghost"
-          className="size-8 cursor-pointer hover:opacity-50"
-          onClick={() => navigate('/knowledge')}
-          aria-label="岗位知识库"
-        >
-          <BookOpenText className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          className="size-8 cursor-pointer hover:opacity-50"
-          onClick={() => navigate('/settings')}
-          aria-label="设置"
-        >
-          <SettingsIcon className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          className="size-8 cursor-pointer hover:opacity-50"
-          onClick={() => navigate('/help')}
-          aria-label="帮助"
-        >
-          <HelpCircle className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          className="size-8 cursor-pointer hover:opacity-50 hover:text-red-500"
+        <IconButton onClick={() => navigate('/knowledge')} aria-label="岗位知识库">
+          <Library />
+        </IconButton>
+        <IconButton onClick={() => navigate('/settings')} aria-label="设置">
+          <SettingsIcon />
+        </IconButton>
+        <IconButton onClick={() => navigate('/help')} aria-label="帮助">
+          <HelpCircle />
+        </IconButton>
+        <IconButton
+          className="hover:bg-red-500/80 hover:text-white dark:hover:bg-red-500/80"
           onClick={() => window.close()}
           aria-label="关闭"
         >
-          <X className="size-4" />
-        </Button>
+          <X />
+        </IconButton>
       </div>
 
       <Dialog

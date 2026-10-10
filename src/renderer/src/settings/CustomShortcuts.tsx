@@ -92,7 +92,7 @@ export function CustomShortcuts() {
             <div className="shortcut-row" key={action}>
               <div>
                 <div className="font-medium">{definition.label}</div>
-                <div className="text-xs text-neutral-500">{definition.category}</div>
+                <div className="text-xs text-muted-foreground">{definition.category}</div>
               </div>
               <button
                 type="button"
@@ -133,7 +133,7 @@ export function CustomShortcuts() {
                 >
                   {statusText}
                 </div>
-                <div className="text-neutral-500">
+                <div className="text-muted-foreground">
                   {definition.scope === 'global' ? '全局' : '应用内'}
                 </div>
                 {conflict && (

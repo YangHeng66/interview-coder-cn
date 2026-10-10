@@ -128,7 +128,7 @@ export function SelectModel({
                   {m.isCustom && (
                     <div className="hidden group-hover:flex">
                       <button
-                        className="text-gray-400 hover:text-red-500 cursor-pointer"
+                        className="text-muted-foreground hover:text-red-500 cursor-pointer"
                         onClick={() => deleteCustomModel(m.value)}
                       >
                         <X className="h-6 w-6" />
@@ -141,7 +141,7 @@ export function SelectModel({
                 <CommandItem
                   value={`create-${searchValue}`}
                   onSelect={() => addCustomModel(searchValue)}
-                  className="!text-blue-600"
+                  className="!text-primary"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   创建 “{searchValue}”

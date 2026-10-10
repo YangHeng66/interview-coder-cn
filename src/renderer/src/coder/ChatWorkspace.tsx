@@ -19,6 +19,7 @@ import {
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { KnowledgeSources } from '@/components/KnowledgeSources'
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import { Textarea } from '@/components/ui/textarea'
 import { chooseLocalFiles } from '@/lib/local-file-picker'
 import { useChatStore, type ChatMessage } from '@/lib/store/chat'
@@ -92,21 +93,18 @@ export function ChatWorkspace({
 
           {messages.length > 0 && (
             <div className="mb-3 flex justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-7 text-gray-200/70 hover:bg-white/10 hover:text-white"
+              <IconButton
+                size="sm"
                 onClick={() => void window.api.clearChatConversation()}
                 aria-label="清空文字对话"
               >
                 <Trash2 className="size-3.5" />
-              </Button>
+              </IconButton>
             </div>
           )}
 
           {messages.length === 0 ? (
-            <div className="flex min-h-56 flex-col items-center justify-center text-center text-gray-200/70">
+            <div className="flex min-h-56 flex-col items-center justify-center text-center text-muted-foreground">
               <Bot className="mb-3 size-7" />
               <p className="text-sm">输入问题，或将实时语音转录自动交给 AI 回答</p>
             </div>
@@ -170,9 +168,9 @@ const ChatMessageItem = memo(function ChatMessageItem({
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[82%] rounded-md bg-gray-800/55 px-3 py-2 text-sm leading-6 text-white shadow-sm">
+        <div className="max-w-[82%] rounded-md bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
           {message.source === 'transcription' && (
-            <div className="mb-1 flex items-center justify-end gap-1 text-[11px] text-green-200/75">
+            <div className="mb-1 flex items-center justify-end gap-1 text-[11px] text-primary">
               <AudioLines className="size-3" />
               语音
             </div>
@@ -182,7 +180,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
               {message.documents.map((document) => (
                 <span
                   key={document.id}
-                  className="inline-flex max-w-full items-center gap-1 rounded bg-white/10 px-2 py-1 text-xs text-gray-100/85"
+                  className="inline-flex max-w-full items-center gap-1 rounded bg-accent px-2 py-1 text-xs text-foreground/85"
                 >
                   <FileText className="size-3 shrink-0" />
                   <span className="truncate">{document.name}</span>
@@ -199,8 +197,8 @@ const ChatMessageItem = memo(function ChatMessageItem({
   const canRetry = message.status === 'error' && previousUserMessage
 
   return (
-    <div className="flex items-start gap-3 text-gray-50">
-      <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded bg-gray-700/70">
+    <div className="flex items-start gap-3 text-foreground">
+      <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded bg-primary-soft text-primary">
         <Bot className="size-3.5" />
       </div>
       <div className="min-w-0 flex-1">
@@ -208,26 +206,24 @@ const ChatMessageItem = memo(function ChatMessageItem({
           <MarkdownRenderer>{message.content}</MarkdownRenderer>
         ) : message.status === 'streaming' ? (
           <div className="flex h-6 items-center gap-1" aria-label="正在生成">
-            <span className="size-1.5 animate-pulse rounded-full bg-gray-200/70" />
-            <span className="size-1.5 animate-pulse rounded-full bg-gray-200/70 [animation-delay:150ms]" />
-            <span className="size-1.5 animate-pulse rounded-full bg-gray-200/70 [animation-delay:300ms]" />
+            <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" />
+            <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:150ms]" />
+            <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:300ms]" />
           </div>
         ) : null}
 
         <KnowledgeSources context={knowledgeContext} className="mt-1" />
 
         {message.content && message.status !== 'streaming' && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="mt-1 size-7 text-gray-300/70 hover:bg-white/10 hover:text-white"
+          <IconButton
+            size="sm"
+            className="mt-1"
             onClick={() => void copyMessage()}
             aria-label={copied ? '已复制回答' : '复制回答'}
             data-tooltip={copied ? '已复制回答' : '复制回答'}
           >
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-          </Button>
+            {copied ? <Check className="text-primary" /> : <Copy />}
+          </IconButton>
         )}
 
         {message.status === 'stopped' && (
@@ -360,13 +356,13 @@ function ChatComposer({
             {documents.map((document) => (
               <span
                 key={document.id}
-                className="inline-flex h-7 max-w-52 shrink-0 items-center gap-1 rounded bg-white/10 pl-2 pr-1 text-xs text-gray-100"
+                className="inline-flex h-7 max-w-52 shrink-0 items-center gap-1 rounded bg-accent pl-2 pr-1 text-xs text-foreground"
               >
                 <FileText className="size-3 shrink-0" />
                 <span className="truncate">{document.name}</span>
                 <button
                   type="button"
-                  className="flex size-5 shrink-0 items-center justify-center text-gray-300 hover:text-white"
+                  className="flex size-5 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
                   onClick={() =>
                     setDocuments((current) =>
                       current.filter((candidate) => candidate.id !== document.id)
@@ -388,29 +384,23 @@ function ChatComposer({
         />
 
         {transcriptionAutoReply && autoReplyQueueCount > 0 && (
-          <div className="mb-2 flex min-h-8 items-center gap-2 border-b border-white/10 pb-2 text-xs text-gray-200/75">
+          <div className="mb-2 flex min-h-8 items-center gap-2 border-b border-border pb-2 text-xs text-muted-foreground">
             <span className="min-w-0 flex-1">待处理语音 {autoReplyQueueCount} 句</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7 text-gray-300 hover:bg-white/10 hover:text-white"
+            <IconButton
+              size="sm"
               onClick={() => void window.api.clearAutoReplyQueue()}
               aria-label="清空待处理语音"
             >
               <ListX className="size-3.5" />
-            </Button>
+            </IconButton>
           </div>
         )}
 
         <div className="flex items-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={`size-9 shrink-0 text-gray-100 hover:bg-white/10 hover:text-white ${
-              isTranscribing ? 'bg-green-400/15 text-green-200' : ''
-            }`}
+          <IconButton
+            size="lg"
+            className="shrink-0"
+            active={isTranscribing}
             onClick={onToggleTranscription}
             aria-label={
               isPaused ? '继续语音识别' : isTranscribing ? '停止语音识别' : '开始语音识别'
@@ -431,7 +421,7 @@ function ChatComposer({
             ) : (
               <Mic className="size-4" />
             )}
-          </Button>
+          </IconButton>
 
           <Textarea
             id="chat-input"
@@ -445,45 +435,39 @@ function ChatComposer({
             }}
             rows={1}
             placeholder="输入问题，Shift+Enter 换行"
-            className="max-h-32 min-h-9 resize-none border-white/15 bg-black/15 py-2 text-sm text-white shadow-none placeholder:text-gray-300/55 focus-visible:border-white/30 focus-visible:ring-white/15"
+            className="max-h-32 min-h-9 resize-none border-input bg-black/15 py-2 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/25 dark:bg-black/15"
             aria-label="对话输入"
           />
 
           {isLoading && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-9 shrink-0 text-red-100 hover:bg-red-400/15 hover:text-red-50"
+            <IconButton
+              size="lg"
+              className="shrink-0 text-red-200 hover:bg-red-400/15 hover:text-red-50 dark:hover:bg-red-400/15"
               onClick={() => void window.api.stopSolutionStream()}
               aria-label="停止生成"
             >
               <OctagonX className="size-4" />
-            </Button>
+            </IconButton>
           )}
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 shrink-0 bg-white/15 text-white hover:bg-white/25 hover:text-white"
+          <IconButton
+            size="lg"
+            className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground dark:hover:bg-primary/90"
             disabled={!draft.trim() && documents.length === 0}
             onClick={() => void sendDraft()}
             aria-label="发送消息"
           >
             <Send className="size-4" />
-          </Button>
+          </IconButton>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 shrink-0 text-gray-100 hover:bg-white/10 hover:text-white"
+          <IconButton
+            size="lg"
+            className="shrink-0"
             onClick={() => void addDocuments()}
             aria-label="上传文档"
           >
             <Paperclip className="size-4" />
-          </Button>
+          </IconButton>
         </div>
       </div>
     </div>

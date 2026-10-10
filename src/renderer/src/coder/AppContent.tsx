@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Copy, Image } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, ChevronRight, Copy, Image, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { IconButton } from '@/components/ui/icon-button'
 import { useSettingsStore } from '@/lib/store/settings'
 import { createStreamBatch } from '@/lib/stream-batch'
 import { useShortcutsStore } from '@/lib/store/shortcuts'
@@ -156,129 +157,114 @@ export function AppContent() {
 
   return (
     <div id="app-content" className="px-6 py-4">
-      {/* Error Banner */}
-      {errorMessage && (
-        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg flex items-start gap-3">
-          <svg
-            className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      <div className="mx-auto w-full max-w-3xl">
+        {/* Error Banner */}
+        {errorMessage && (
+          <div
+            role="alert"
+            className="mb-4 flex items-start gap-3 rounded-lg border border-red-400/40 bg-red-500/15 p-3"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <div className="flex-1 min-w-0">
-            <p className="text-red-400 font-medium text-sm">API 调用失败</p>
-            <p className="text-red-300/80 text-sm mt-0.5 break-words">{errorMessage}</p>
+            <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-300" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-red-200">API 调用失败</p>
+              <p className="mt-0.5 text-sm break-words text-red-100/85">{errorMessage}</p>
+            </div>
+            <IconButton
+              size="sm"
+              className="text-red-200 hover:bg-red-400/20 hover:text-red-50 dark:hover:bg-red-400/20"
+              onClick={() => setErrorMessage(null)}
+              aria-label="关闭错误提示"
+            >
+              <X />
+            </IconButton>
           </div>
-          <button
-            onClick={() => setErrorMessage(null)}
-            className="text-red-400/80 hover:text-red-300 flex-shrink-0"
-            aria-label="关闭错误提示"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-      )}
+        )}
 
-      {/* Screenshot Gallery */}
-      {(recentScreenshots.length > 0 || screenshotData) && (
-        <button
-          type="button"
-          className="mb-2 flex items-center gap-2 text-xs text-neutral-300"
-          aria-expanded={!screenshotsCollapsed}
-          onClick={() => updateSetting('screenshotsCollapsed', !screenshotsCollapsed)}
-        >
-          {screenshotsCollapsed ? (
-            <ChevronRight className="size-3.5" />
-          ) : (
-            <ChevronDown className="size-3.5" />
-          )}
-          <Image className="size-3.5" />
-          截图 {recentScreenshots.length || 1}
-        </button>
-      )}
-      {!screenshotsCollapsed && (
-        <>
-          {recentScreenshots.length > 0 ? (
-            <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
-              {recentScreenshots.map((data, index) => (
-                <button
-                  type="button"
-                  key={index}
-                  className="shrink-0"
-                  aria-label={`查看第 ${index + 1} 张截图`}
-                  onClick={() => setPreview(data)}
-                >
-                  <img
-                    key={index}
-                    src={`data:image/png;base64,${data}`}
-                    alt={`Screenshot ${index + 1}`}
-                    className="h-20 w-32 object-contain border border-white/15 rounded bg-black/20"
-                  />
-                </button>
-              ))}
-            </div>
-          ) : screenshotData ? (
-            <div className="mb-4">
-              <img
-                src={`data:image/png;base64,${screenshotData}`}
-                alt="Screenshot"
-                className="w-40 h-auto border border-gray-600 rounded-lg shadow-lg"
-              />
-            </div>
-          ) : (
-            <ShortcutTip />
-          )}
-        </>
-      )}
-      {screenshotsCollapsed && !screenshotData && <ShortcutTip />}
-      <Dialog
-        open={preview !== null}
-        onOpenChange={(open) => {
-          if (!open) setPreview(null)
-        }}
-      >
-        <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-4xl">
-          <DialogTitle>截图</DialogTitle>
-          {preview && (
-            <img
-              src={`data:image/png;base64,${preview}`}
-              alt="截图原图"
-              className="h-auto w-full"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Solution Display */}
-      <KnowledgeSources context={visionContext} className="mb-2" />
-      {solutionChunks.join('').trim() && (
-        <div className="mb-1 flex justify-end">
+        {/* Screenshot Gallery */}
+        {(recentScreenshots.length > 0 || screenshotData) && (
           <button
             type="button"
-            className="inline-flex size-7 items-center justify-center rounded text-neutral-300/70 hover:bg-white/10 hover:text-white"
-            onClick={() => void copySolution()}
-            aria-label={copied ? '已复制回答' : '复制回答'}
-            data-tooltip={copied ? '已复制回答' : '复制回答'}
+            className="mb-2 flex items-center gap-2 rounded text-xs text-muted-foreground hover:text-foreground"
+            aria-expanded={!screenshotsCollapsed}
+            onClick={() => updateSetting('screenshotsCollapsed', !screenshotsCollapsed)}
           >
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            {screenshotsCollapsed ? (
+              <ChevronRight className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
+            <Image className="size-3.5" />
+            截图 {recentScreenshots.length || 1}
           </button>
-        </div>
-      )}
-      <MarkdownRenderer>{solutionChunks.join('')}</MarkdownRenderer>
+        )}
+        {!screenshotsCollapsed && (
+          <>
+            {recentScreenshots.length > 0 ? (
+              <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+                {recentScreenshots.map((data, index) => (
+                  <button
+                    type="button"
+                    key={index}
+                    className="shrink-0"
+                    aria-label={`查看第 ${index + 1} 张截图`}
+                    onClick={() => setPreview(data)}
+                  >
+                    <img
+                      key={index}
+                      src={`data:image/png;base64,${data}`}
+                      alt={`Screenshot ${index + 1}`}
+                      className="h-20 w-32 rounded border border-border bg-black/20 object-contain transition-colors hover:border-primary"
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : screenshotData ? (
+              <div className="mb-4">
+                <img
+                  src={`data:image/png;base64,${screenshotData}`}
+                  alt="Screenshot"
+                  className="h-auto w-40 rounded-lg border border-border shadow-lg"
+                />
+              </div>
+            ) : (
+              <ShortcutTip />
+            )}
+          </>
+        )}
+        {screenshotsCollapsed && !screenshotData && <ShortcutTip />}
+        <Dialog
+          open={preview !== null}
+          onOpenChange={(open) => {
+            if (!open) setPreview(null)
+          }}
+        >
+          <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-4xl">
+            <DialogTitle>截图</DialogTitle>
+            {preview && (
+              <img
+                src={`data:image/png;base64,${preview}`}
+                alt="截图原图"
+                className="h-auto w-full"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Solution Display */}
+        <KnowledgeSources context={visionContext} className="mb-2" />
+        {solutionChunks.join('').trim() && (
+          <div className="mb-1 flex justify-end">
+            <IconButton
+              size="sm"
+              onClick={() => void copySolution()}
+              aria-label={copied ? '已复制回答' : '复制回答'}
+            >
+              {copied ? <Check className="text-primary" /> : <Copy />}
+            </IconButton>
+          </div>
+        )}
+        <MarkdownRenderer>{solutionChunks.join('')}</MarkdownRenderer>
+      </div>
     </div>
   )
 }
@@ -286,12 +272,9 @@ export function AppContent() {
 function ShortcutTip() {
   const { shortcuts } = useShortcutsStore()
   return (
-    <div className="flex items-center justify-center h-full text-xl text-gray-400 select-none">
+    <div className="flex h-full min-h-40 flex-wrap items-center justify-center gap-2 text-base text-muted-foreground select-none">
       请按下快捷键
-      <ShortcutRenderer
-        shortcut={shortcuts.takeScreenshot.key}
-        className="mx-1 font-bold text-black"
-      />
+      <ShortcutRenderer shortcut={shortcuts.takeScreenshot.key} />
       抓取屏幕进行分析
     </div>
   )
