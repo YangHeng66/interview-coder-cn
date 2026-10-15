@@ -6,6 +6,7 @@ import type { ModelMessage } from 'ai'
 import {
   getImageExtension,
   type AssistantMode,
+  type ConversationPersona,
   type ChatEvent,
   type ConversationSummary,
   type ConversationView,
@@ -13,7 +14,7 @@ import {
 } from '../preload/contracts'
 import appConfig from '../../app.config.json'
 
-type Conversation = ConversationView & { modelMessages: ModelMessage[] }
+export type Conversation = ConversationView & { modelMessages: ModelMessage[] }
 type StoredConversation = Conversation & { schemaVersion: 2 }
 type Manifest = {
   conversations: ConversationSummary[]
@@ -149,11 +150,15 @@ function touch(conversation: Conversation) {
   queueSave()
 }
 
-export function newConversation(mode: AssistantMode): Conversation {
+export function newConversation(
+  mode: AssistantMode,
+  options: { persona?: ConversationPersona; title?: string } = {}
+): Conversation {
   const timestamp = new Date().toISOString()
   const conversation: Conversation = {
     id: randomUUID(),
-    title: mode === 'chat' ? '新的文字对话' : '截图分析',
+    title: options.title ?? (mode === 'chat' ? '新的文字对话' : '截图分析'),
+    persona: options.persona,
     mode,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -209,7 +214,8 @@ export function recordChatEvent(event: ChatEvent) {
   if (event.type === 'auto-reply-queue' || event.type === 'request-error') return
   const conversation = activeConversation('chat')
   if (event.type === 'user-message') {
-    if (!conversation.chatMessages.length)
+    // Persona conversations are titled when created
+    if (!conversation.chatMessages.length && !conversation.persona)
       conversation.title = (event.text || event.documents?.[0]?.name || '文字对话').slice(
         0,
         appConfig.sessions.titleLength

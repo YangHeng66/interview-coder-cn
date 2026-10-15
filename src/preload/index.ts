@@ -30,6 +30,7 @@ import type {
   ConversationView,
   ModelDiagnosticInput,
   ModelDiagnosticResult,
+  ReviewReportResult,
   ShortcutRegistration
 } from './contracts'
 
@@ -71,6 +72,12 @@ const api = {
     >,
   exportConversation: (id: string) =>
     ipcRenderer.invoke('exportConversation', id) as Promise<string>,
+  generateReviewReport: (conversationIds: string[]) =>
+    ipcRenderer.invoke('generateReviewReport', conversationIds) as Promise<ReviewReportResult>,
+  saveMessageToKnowledge: (messageId: string) =>
+    ipcRenderer.invoke('saveMessageToKnowledge', messageId) as Promise<
+      KnowledgeResult<KnowledgeImportResult | null>
+    >,
   writeClipboardText: (text: string) =>
     ipcRenderer.invoke('writeClipboardText', text) as Promise<void>,
   onConversationStorageError: (callback: (message: string) => void) => {

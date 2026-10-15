@@ -1,8 +1,10 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import {
   AudioLines,
+  BookmarkPlus,
   Bot,
   Check,
+  ClipboardList,
   Copy,
   FileText,
   ListX,
@@ -52,7 +54,7 @@ export function ChatWorkspace({
   onPauseTranscription: () => void
   onToggleTranscription: () => void
 }) {
-  const { messages, isLoading, errorMessage, setErrorMessage } = useChatStore()
+  const { messages, isLoading, errorMessage, setErrorMessage, persona } = useChatStore()
   const scrollRef = useRef<HTMLDivElement>(null)
   const shouldAutoScrollRef = useRef(true)
 
@@ -92,7 +94,13 @@ export function ChatWorkspace({
           )}
 
           {messages.length > 0 && (
-            <div className="mb-3 flex justify-end">
+            <div className="mb-3 flex items-center justify-end gap-2">
+              {persona === 'review' && (
+                <span className="mr-auto inline-flex items-center gap-1.5 text-xs text-primary">
+                  <ClipboardList className="size-3.5" />
+                  面试复盘报告
+                </span>
+              )}
               <IconButton
                 size="sm"
                 onClick={() => void window.api.clearChatConversation()}
@@ -152,7 +160,28 @@ const ChatMessageItem = memo(function ChatMessageItem({
   previousUserMessage?: ChatMessage
 }) {
   const knowledgeContext = useKnowledgeStore((state) => state.chatContexts[message.requestId])
+  const hasActiveProfile = useKnowledgeStore((state) => Boolean(state.snapshot.activeProfileId))
   const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const saveToKnowledge = async () => {
+    setSaving(true)
+    try {
+      const result = await window.api.saveMessageToKnowledge(message.id)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      if (result.data) useKnowledgeStore.getState().setSnapshot(result.data.snapshot)
+      const failure = result.data?.failures[0]
+      if (failure) toast.error(`存入知识库失败：${failure.error}`)
+      else if (result.data?.duplicateIds.length)
+        toast.success('知识库中已有相同内容，已关联到当前岗位')
+      else toast.success('已存入当前岗位知识库')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const copyMessage = async () => {
     if (!message.content) return
@@ -163,6 +192,23 @@ const ChatMessageItem = memo(function ChatMessageItem({
     } catch (error) {
       toast.error(`复制回答失败：${String(error)}`)
     }
+  }
+
+  if (message.role === 'user' && message.source === 'control') {
+    return (
+      <div className="flex flex-col items-center gap-1.5 text-center text-xs text-muted-foreground">
+        <span>{message.content}</span>
+        {message.documents?.map((document) => (
+          <span
+            key={document.id}
+            className="inline-flex max-w-full items-center gap-1 rounded bg-accent px-2 py-1 text-foreground/85"
+          >
+            <FileText className="size-3 shrink-0" />
+            <span className="truncate">{document.name}</span>
+          </span>
+        ))}
+      </div>
+    )
   }
 
   if (message.role === 'user') {
@@ -215,15 +261,25 @@ const ChatMessageItem = memo(function ChatMessageItem({
         <KnowledgeSources context={knowledgeContext} className="mt-1" />
 
         {message.content && message.status !== 'streaming' && (
-          <IconButton
-            size="sm"
-            className="mt-1"
-            onClick={() => void copyMessage()}
-            aria-label={copied ? '已复制回答' : '复制回答'}
-            data-tooltip={copied ? '已复制回答' : '复制回答'}
-          >
-            {copied ? <Check className="text-primary" /> : <Copy />}
-          </IconButton>
+          <div className="mt-1 flex gap-1">
+            <IconButton
+              size="sm"
+              onClick={() => void copyMessage()}
+              aria-label={copied ? '已复制回答' : '复制回答'}
+              data-tooltip={copied ? '已复制回答' : '复制回答'}
+            >
+              {copied ? <Check className="text-primary" /> : <Copy />}
+            </IconButton>
+            <IconButton
+              size="sm"
+              disabled={saving || !hasActiveProfile}
+              onClick={() => void saveToKnowledge()}
+              aria-label="存入当前岗位知识库"
+              data-tooltip={hasActiveProfile ? '存入当前岗位知识库' : '选择岗位后可存入知识库'}
+            >
+              <BookmarkPlus />
+            </IconButton>
+          </div>
         )}
 
         {message.status === 'stopped' && (

@@ -13,7 +13,8 @@ export function applyConversationViews(views: Record<AssistantMode, Conversation
     isLoading: Boolean(activeMessage),
     activeRequestId: activeMessage?.requestId ?? null,
     errorMessage: null,
-    autoReplyQueueCount: 0
+    autoReplyQueueCount: 0,
+    persona: views.chat.persona
   })
   useSolutionStore.setState({
     solutionChunks: [views.screenshot.visionText],

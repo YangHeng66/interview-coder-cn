@@ -67,7 +67,16 @@ export type ConversationView = ConversationSummary & {
   sources: KnowledgeContextUsed[]
   profileId: string | null
   builtinKnowledge: boolean
+  /** Absent for a plain assistant conversation */
+  persona?: ConversationPersona
 }
+
+/** Chat conversations with their own system prompt: a generated review report */
+export type ConversationPersona = 'review'
+
+export type ReviewReportResult =
+  | { ok: true; views: Record<AssistantMode, ConversationView> }
+  | { ok: false; error: string }
 
 export const THINKING_LEVELS = [
   'auto',
@@ -132,7 +141,8 @@ export type ChatProvider = 'deepseek' | 'custom'
 
 export type AssistantMode = 'screenshot' | 'chat'
 
-export type ChatMessageSource = 'typed' | 'transcription'
+/** `control` marks instructions the app sends on the user's behalf (shown as a label, not a bubble) */
+export type ChatMessageSource = 'typed' | 'transcription' | 'control'
 
 export type TranscriptionProvider = 'dashscope' | 'volcengine'
 
@@ -485,6 +495,25 @@ export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro'] as const
 
 export const DEFAULT_CHAT_SYSTEM_PROMPT =
   '你是一名准确、简洁的中文 AI 助手。直接回答用户问题；信息不足时明确说明。除非用户另有要求，否则使用中文回答。'
+
+export const DEFAULT_REVIEW_REPORT_PROMPT = `你是一名资深技术面试复盘教练。用户会提供一场或多场面试过程中的记录：语音转录的问答、截图题目，以及当时 AI 给出的参考回答。请基于这些材料输出一份中文 Markdown 复盘报告，包含以下部分：
+
+## 问题清单
+按出现顺序列出面试官提出的问题或题目，每条一句话概括。
+
+## 我的回答要点
+针对每个问题，概括候选人实际表达的要点；材料中没有候选人回答的，标注「未记录到回答」，不要编造。
+
+## 不足与改进
+指出回答中的错误、遗漏和表达问题，并给出更好的回答思路或要点。
+
+## 建议补充的资料
+列出需要复习的知识点或需要准备的项目细节。
+
+## 下一轮准备重点
+给出 3-5 条最优先的准备建议。
+
+要求：只依据材料作答；材料中的 AI 参考回答仅供对照，不代表候选人的回答。`
 
 export type ChatEvent =
   | {

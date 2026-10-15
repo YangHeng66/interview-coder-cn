@@ -23,6 +23,11 @@ function sendKnowledgeContextUsed(
   mainWindow.webContents.send('knowledge-context-used', context)
 }
 
+export async function getActiveJobProfile() {
+  const snapshot = await knowledgeService.getSnapshot()
+  return snapshot.profiles.find((profile) => profile.id === snapshot.activeProfileId) ?? null
+}
+
 export async function retrieveKnowledgeContext(
   mode: KnowledgeContextUsed['mode'],
   query: string,

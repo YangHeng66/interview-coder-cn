@@ -21,7 +21,8 @@ import type {
 import { createChatModelText, normalizeChatDocuments } from './chat-documents'
 import { extractErrorMessage } from './errors'
 import { sendChatEvent } from './events'
-import { retrieveKnowledgeContext } from './knowledge-context'
+import { getActiveJobProfile, retrieveKnowledgeContext } from './knowledge-context'
+import { buildPersonaSystemPrompt } from './personas'
 import { createRecentKnowledgeContext } from './messages'
 import {
   abortCurrentStream,
@@ -220,18 +221,27 @@ async function runChatRequest(
   let streamError: unknown = null
 
   try {
-    const knowledge = await retrieveKnowledgeContext(
-      'chat',
-      knowledgeQuery,
-      requestId,
-      createRecentKnowledgeContext(chatConversationMessages),
-      streamContext.controller.signal
-    )
+    const conversation = activeConversation('chat')
+    const systemPrompt = conversation.persona
+      ? buildPersonaSystemPrompt(conversation, await getActiveJobProfile())
+      : undefined
+    // The review material already contains what the knowledge base matched at the time
+    const knowledge =
+      conversation.persona === 'review'
+        ? null
+        : await retrieveKnowledgeContext(
+            'chat',
+            knowledgeQuery,
+            requestId,
+            createRecentKnowledgeContext(chatConversationMessages),
+            streamContext.controller.signal
+          )
     if (!streamContext.controller.signal.aborted) {
       const chatStream = getChatStream(
         requestMessages,
         streamContext.controller.signal,
-        knowledge?.context
+        knowledge?.context,
+        systemPrompt
       )
       for await (const chunk of chatStream) {
         if (streamContext.controller.signal.aborted) break
@@ -331,7 +341,7 @@ function acceptChatRequest(
   return { accepted: true, requestId }
 }
 
-function submitChatMessage(
+export function submitChatMessage(
   rawText: string,
   source: ChatMessageSource,
   rawDocuments?: ChatDocument[]

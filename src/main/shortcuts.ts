@@ -15,6 +15,7 @@ import {
   toggleMainWindow
 } from './assistant/window-control'
 import './assistant/session'
+import './assistant/review'
 
 type Shortcut = {
   action: string

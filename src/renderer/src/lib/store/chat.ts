@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import type {
   ChatDocument,
   ChatEvent,
-  ChatMessageSource
+  ChatMessageSource,
+  ConversationPersona
 } from '../../../../preload/contracts'
 
 export type ChatMessageStatus = 'streaming' | 'complete' | 'stopped' | 'error'
@@ -24,6 +25,7 @@ interface ChatState {
   activeRequestId: string | null
   errorMessage: string | null
   autoReplyQueueCount: number
+  persona?: ConversationPersona
 }
 
 interface ChatStore extends ChatState {
@@ -36,7 +38,16 @@ const defaultState: ChatState = {
   isLoading: false,
   activeRequestId: null,
   errorMessage: null,
-  autoReplyQueueCount: 0
+  autoReplyQueueCount: 0,
+  persona: undefined
+}
+
+/**
+ * A conversation switch (e.g. starting a review report) returns views that may already
+ * contain the request's first messages, and the IPC reply can beat the chat events.
+ */
+function appendMessage(messages: ChatMessage[], message: ChatMessage): ChatMessage[] {
+  return messages.some((item) => item.id === message.id) ? messages : [...messages, message]
 }
 
 export const useChatStore = create<ChatStore>()((set) => ({
@@ -45,32 +56,26 @@ export const useChatStore = create<ChatStore>()((set) => ({
     switch (event.type) {
       case 'user-message':
         set((state) => ({
-          messages: [
-            ...state.messages,
-            {
-              id: event.messageId,
-              requestId: event.requestId,
-              role: 'user',
-              content: event.text,
-              source: event.source,
-              documents: event.documents
-            }
-          ],
+          messages: appendMessage(state.messages, {
+            id: event.messageId,
+            requestId: event.requestId,
+            role: 'user',
+            content: event.text,
+            source: event.source,
+            documents: event.documents
+          }),
           errorMessage: null
         }))
         break
       case 'assistant-start':
         set((state) => ({
-          messages: [
-            ...state.messages,
-            {
-              id: event.messageId,
-              requestId: event.requestId,
-              role: 'assistant',
-              content: '',
-              status: 'streaming'
-            }
-          ],
+          messages: appendMessage(state.messages, {
+            id: event.messageId,
+            requestId: event.requestId,
+            role: 'assistant',
+            content: '',
+            status: 'streaming'
+          }),
           isLoading: true,
           activeRequestId: event.requestId,
           errorMessage: null
@@ -91,8 +96,7 @@ export const useChatStore = create<ChatStore>()((set) => ({
             message.id === event.messageId ? { ...message, status: 'complete' } : message
           ),
           isLoading: state.activeRequestId === event.requestId ? false : state.isLoading,
-          activeRequestId:
-            state.activeRequestId === event.requestId ? null : state.activeRequestId
+          activeRequestId: state.activeRequestId === event.requestId ? null : state.activeRequestId
         }))
         break
       case 'assistant-stopped':
@@ -101,8 +105,7 @@ export const useChatStore = create<ChatStore>()((set) => ({
             message.id === event.messageId ? { ...message, status: 'stopped' } : message
           ),
           isLoading: state.activeRequestId === event.requestId ? false : state.isLoading,
-          activeRequestId:
-            state.activeRequestId === event.requestId ? null : state.activeRequestId
+          activeRequestId: state.activeRequestId === event.requestId ? null : state.activeRequestId
         }))
         break
       case 'assistant-error':
@@ -113,8 +116,7 @@ export const useChatStore = create<ChatStore>()((set) => ({
               : message
           ),
           isLoading: state.activeRequestId === event.requestId ? false : state.isLoading,
-          activeRequestId:
-            state.activeRequestId === event.requestId ? null : state.activeRequestId
+          activeRequestId: state.activeRequestId === event.requestId ? null : state.activeRequestId
         }))
         break
       case 'request-error':

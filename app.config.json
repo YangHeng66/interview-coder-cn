@@ -18,6 +18,9 @@
     "jpegQuality": 85,
     "maxLongEdge": 2560
   },
+  "review": {
+    "maxInputCharacters": 60000
+  },
   "performance": {
     "streamFlushIntervalMs": 40,
     "knowledgeQueryRewrite": false,

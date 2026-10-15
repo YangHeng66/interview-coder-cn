@@ -370,13 +370,18 @@ export function getGeneralStream(
 export function getChatStream(
   messages: ModelMessage[],
   abortSignal?: AbortSignal,
-  knowledgeContext?: string
+  knowledgeContext?: string,
+  /** Replaces the user's chat system prompt (persona conversations) */
+  systemPrompt?: string
 ) {
   const connection = getChatConnection()
   const timing = createStreamTimingLogger(connection, 'chat')
   const { textStream } = streamText({
     model: createLanguageModel(connection),
-    system: [settings.chatSystemPrompt.trim() || DEFAULT_CHAT_SYSTEM_PROMPT, knowledgeContext]
+    system: [
+      systemPrompt ?? (settings.chatSystemPrompt.trim() || DEFAULT_CHAT_SYSTEM_PROMPT),
+      knowledgeContext
+    ]
       .filter(Boolean)
       .join('\n\n'),
     messages: selectRequestHistory(messages),
