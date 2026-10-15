@@ -7,6 +7,7 @@ import {
   getImageExtension,
   type AssistantMode,
   type ConversationPersona,
+  type MockInterviewSetup,
   type ChatEvent,
   type ConversationSummary,
   type ConversationView,
@@ -152,13 +153,18 @@ function touch(conversation: Conversation) {
 
 export function newConversation(
   mode: AssistantMode,
-  options: { persona?: ConversationPersona; title?: string } = {}
+  options: {
+    persona?: ConversationPersona
+    title?: string
+    mockInterview?: MockInterviewSetup
+  } = {}
 ): Conversation {
   const timestamp = new Date().toISOString()
   const conversation: Conversation = {
     id: randomUUID(),
     title: options.title ?? (mode === 'chat' ? '新的文字对话' : '截图分析'),
     persona: options.persona,
+    mockInterview: options.mockInterview,
     mode,
     createdAt: timestamp,
     updatedAt: timestamp,

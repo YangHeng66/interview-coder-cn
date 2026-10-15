@@ -16,6 +16,7 @@ import {
 } from './assistant/window-control'
 import './assistant/session'
 import './assistant/review'
+import './assistant/mock-interview'
 
 type Shortcut = {
   action: string

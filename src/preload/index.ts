@@ -30,7 +30,8 @@ import type {
   ConversationView,
   ModelDiagnosticInput,
   ModelDiagnosticResult,
-  ReviewReportResult,
+  MockInterviewOptions,
+  PersonaConversationResult,
   ShortcutRegistration
 } from './contracts'
 
@@ -73,7 +74,14 @@ const api = {
   exportConversation: (id: string) =>
     ipcRenderer.invoke('exportConversation', id) as Promise<string>,
   generateReviewReport: (conversationIds: string[]) =>
-    ipcRenderer.invoke('generateReviewReport', conversationIds) as Promise<ReviewReportResult>,
+    ipcRenderer.invoke(
+      'generateReviewReport',
+      conversationIds
+    ) as Promise<PersonaConversationResult>,
+  startMockInterview: (options: MockInterviewOptions) =>
+    ipcRenderer.invoke('startMockInterview', options) as Promise<PersonaConversationResult>,
+  endMockInterview: () =>
+    ipcRenderer.invoke('endMockInterview') as Promise<PersonaConversationResult>,
   saveMessageToKnowledge: (messageId: string) =>
     ipcRenderer.invoke('saveMessageToKnowledge', messageId) as Promise<
       KnowledgeResult<KnowledgeImportResult | null>

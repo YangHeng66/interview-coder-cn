@@ -3,7 +3,8 @@ import type {
   ChatDocument,
   ChatEvent,
   ChatMessageSource,
-  ConversationPersona
+  ConversationPersona,
+  MockInterviewSetup
 } from '../../../../preload/contracts'
 
 export type ChatMessageStatus = 'streaming' | 'complete' | 'stopped' | 'error'
@@ -26,6 +27,7 @@ interface ChatState {
   errorMessage: string | null
   autoReplyQueueCount: number
   persona?: ConversationPersona
+  mockInterview?: MockInterviewSetup
 }
 
 interface ChatStore extends ChatState {
@@ -39,7 +41,8 @@ const defaultState: ChatState = {
   activeRequestId: null,
   errorMessage: null,
   autoReplyQueueCount: 0,
-  persona: undefined
+  persona: undefined,
+  mockInterview: undefined
 }
 
 /**

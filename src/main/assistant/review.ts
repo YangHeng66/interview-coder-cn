@@ -15,7 +15,7 @@ import { knowledgeService } from '../knowledge/service'
 import type {
   KnowledgeImportResult,
   KnowledgeResult,
-  ReviewReportResult
+  PersonaConversationResult
 } from '../../preload/contracts'
 import { submitChatMessage } from './chat'
 import { getActiveJobProfile } from './knowledge-context'
@@ -30,7 +30,7 @@ function reviewTitle(profile: { company: string; role: string } | null): string 
 
 ipcMain.handle(
   'generateReviewReport',
-  async (_event, conversationIds: string[]): Promise<ReviewReportResult> => {
+  async (_event, conversationIds: string[]): Promise<PersonaConversationResult> => {
     if (!Array.isArray(conversationIds) || conversationIds.length === 0) {
       return { ok: false, error: '请至少选择一个会话' }
     }

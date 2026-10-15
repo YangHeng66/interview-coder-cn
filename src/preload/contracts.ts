@@ -69,12 +69,32 @@ export type ConversationView = ConversationSummary & {
   builtinKnowledge: boolean
   /** Absent for a plain assistant conversation */
   persona?: ConversationPersona
+  mockInterview?: MockInterviewSetup
 }
 
-/** Chat conversations with their own system prompt: a generated review report */
-export type ConversationPersona = 'review'
+/** Chat conversations with their own system prompt: a review report or a mock interview */
+export type ConversationPersona = 'review' | 'mock-interview'
 
-export type ReviewReportResult =
+export type MockInterviewFocus = 'technical' | 'project' | 'behavioral' | 'mixed'
+
+export const MOCK_INTERVIEW_FOCUS_LABELS: Record<MockInterviewFocus, string> = {
+  technical: '技术基础',
+  project: '项目经历',
+  behavioral: '行为面试',
+  mixed: '综合'
+}
+
+export const MOCK_INTERVIEW_QUESTION_COUNTS = [3, 5, 8] as const
+
+export type MockInterviewOptions = { questionCount: number; focus: MockInterviewFocus }
+
+export type MockInterviewSetup = MockInterviewOptions & {
+  /** Job profile summary captured at start, so reopening the conversation stays consistent */
+  brief: string
+  endedAt?: string
+}
+
+export type PersonaConversationResult =
   | { ok: true; views: Record<AssistantMode, ConversationView> }
   | { ok: false; error: string }
 
@@ -495,6 +515,17 @@ export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro'] as const
 
 export const DEFAULT_CHAT_SYSTEM_PROMPT =
   '你是一名准确、简洁的中文 AI 助手。直接回答用户问题；信息不足时明确说明。除非用户另有要求，否则使用中文回答。'
+
+export const DEFAULT_MOCK_INTERVIEW_PROMPT = `你是一名严格但友善的技术面试官，正在对候选人进行模拟面试。规则：
+1. 每次只提出一个问题，问题要具体，贴合岗位要求与候选人资料，不要一次列出多个问题。
+2. 每个问题前标注题号，例如「第 2 题」。
+3. 候选人回答后，先简短点评（亮点、缺漏、参考要点，各 1-3 条），再提出下一题；回答明显不完整时可以先追问一次，追问不计入题数。
+4. 达到计划题数后不再提问，提示候选人点击「结束并评分」。
+5. 回答来自语音识别，可能有错别字或断句问题，按语义理解，不要因识别错误扣分。
+6. 使用中文。`
+
+export const MOCK_INTERVIEW_END_PROMPT =
+  '面试结束。请不要再提问，按技术深度、表达结构、项目匹配度、沟通四个维度分别打分（1-5 分）并说明理由，最后给出总体评价和 3 条最优先的改进建议。'
 
 export const DEFAULT_REVIEW_REPORT_PROMPT = `你是一名资深技术面试复盘教练。用户会提供一场或多场面试过程中的记录：语音转录的问答、截图题目，以及当时 AI 给出的参考回答。请基于这些材料输出一份中文 Markdown 复盘报告，包含以下部分：
 

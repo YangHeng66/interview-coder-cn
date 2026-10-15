@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Send,
   Trash2,
+  UserRoundSearch,
   X
 } from 'lucide-react'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
@@ -34,6 +35,7 @@ import {
 import { useTranscriptionStore } from '@/lib/store/transcription'
 import { toast } from 'sonner'
 import { TranscriptionBar } from './TranscriptionBar'
+import { MockInterviewBar, MockInterviewDialog } from './MockInterview'
 import {
   CHAT_DOCUMENT_EXTENSIONS,
   CHAT_DOCUMENT_MAX_FILES,
@@ -57,6 +59,7 @@ export function ChatWorkspace({
   const { messages, isLoading, errorMessage, setErrorMessage, persona } = useChatStore()
   const scrollRef = useRef<HTMLDivElement>(null)
   const shouldAutoScrollRef = useRef(true)
+  const [mockDialogOpen, setMockDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!shouldAutoScrollRef.current) return
@@ -101,6 +104,17 @@ export function ChatWorkspace({
                   面试复盘报告
                 </span>
               )}
+              {persona === 'mock-interview' && <MockInterviewBar />}
+              {!persona && (
+                <IconButton
+                  size="sm"
+                  onClick={() => setMockDialogOpen(true)}
+                  aria-label="开始模拟面试"
+                  data-tooltip="开始模拟面试"
+                >
+                  <UserRoundSearch className="size-3.5" />
+                </IconButton>
+              )}
               <IconButton
                 size="sm"
                 onClick={() => void window.api.clearChatConversation()}
@@ -115,6 +129,15 @@ export function ChatWorkspace({
             <div className="flex min-h-56 flex-col items-center justify-center text-center text-muted-foreground">
               <Bot className="mb-3 size-7" />
               <p className="text-sm">输入问题，或将实时语音转录自动交给 AI 回答</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => setMockDialogOpen(true)}
+              >
+                <UserRoundSearch className="size-3.5" />
+                开始模拟面试
+              </Button>
             </div>
           ) : (
             <div className="space-y-5">
@@ -129,6 +152,8 @@ export function ChatWorkspace({
           )}
         </div>
       </div>
+
+      <MockInterviewDialog open={mockDialogOpen} onOpenChange={setMockDialogOpen} />
 
       <ChatComposer
         isLoading={isLoading}

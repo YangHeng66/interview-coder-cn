@@ -14,7 +14,8 @@ export function applyConversationViews(views: Record<AssistantMode, Conversation
     activeRequestId: activeMessage?.requestId ?? null,
     errorMessage: null,
     autoReplyQueueCount: 0,
-    persona: views.chat.persona
+    persona: views.chat.persona,
+    mockInterview: views.chat.mockInterview
   })
   useSolutionStore.setState({
     solutionChunks: [views.screenshot.visionText],

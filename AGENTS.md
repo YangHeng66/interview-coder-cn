@@ -41,6 +41,9 @@ src/
 │   │   ├── vision.ts          # Screenshot / append / follow-up flows + vision model history
 │   │   ├── chat.ts            # Text chat flow, document attachments, voice auto-reply queue, stop
 │   │   ├── session.ts         # Conversation open/new/delete/export IPC, knowledge-profile switching
+│   │   ├── review.ts          # Review report from selected conversations; save an answer into the job profile
+│   │   ├── mock-interview.ts  # Mock interview start/end; job-profile brief captured at start
+│   │   ├── personas.ts        # System prompts for persona conversations (review, mock-interview)
 │   │   ├── knowledge-context.ts # Knowledge retrieval for a request (+ optional AI query rewrite)
 │   │   ├── window-control.ts  # Always-on-top guard, soft hide (Windows), opacity, window movement
 │   │   ├── events.ts          # sendChatEvent / sendVisionEvent: forward to renderer + record in conversation
@@ -301,3 +304,5 @@ These are read by dotenv in the main process and merged with renderer-side setti
 8. **macOS auto-update is disabled**: `publish: null` in electron-builder.yml for mac target. Auto-update only works on Windows.
 
 9. **API keys never live in localStorage**: `SECRET_SETTING_KEYS` (`preload/contracts.ts`) are stripped by the settings store's `partialize` and stored encrypted by `src/main/secrets.ts`. The renderer still receives them in memory via `getAppSettings`.
+
+10. **Persona conversations**: review reports and mock interviews are ordinary chat conversations with `persona` set; `runChatRequest` swaps the system prompt via `buildPersonaSystemPrompt`. Instructions the app sends for the user use `ChatMessageSource` `'control'` and render as a label. IPC handlers that switch conversation and then submit a message must return views captured *after* submitting (the chat events can arrive before the reply; the chat store dedupes by message id).
