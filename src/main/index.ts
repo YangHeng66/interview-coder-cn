@@ -36,7 +36,7 @@ import { createWindow } from './main-window'
 import { initAutoUpdater } from './auto-updater'
 import { applyDockVisibility } from './settings'
 import { initializeConversations, flushConversations } from './conversations'
-import { restoreConversationModels } from './shortcuts'
+import { restoreConversationModels } from './assistant/session'
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

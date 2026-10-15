@@ -34,12 +34,25 @@ src/
 │   ├── index.ts             # App entry: lifecycle, error handling, app.whenReady()
 │   ├── main-window.ts       # BrowserWindow creation (frameless, transparent, always-on-top)
 │   ├── toolbar-window.ts    # Overlay toolbar window: bounds/visibility/opacity glued to main window
-│   ├── shortcuts.ts         # Global shortcuts registration + AI streaming orchestration (largest file)
-│   ├── ai.ts                # Vercel AI SDK integration, 3 streaming functions
+│   ├── shortcuts.ts         # Global shortcut registry: action → callback map, conflict detection, shortcut IPC
+│   ├── shortcut-keys.ts     # Accelerator normalization (conflict detection)
+│   ├── assistant/           # AI request orchestration (split out of shortcuts.ts)
+│   │   ├── stream-context.ts  # The single running stream, abort/release/detach, conversation-transition counter
+│   │   ├── vision.ts          # Screenshot / append / follow-up flows + vision model history
+│   │   ├── chat.ts            # Text chat flow, document attachments, voice auto-reply queue, stop
+│   │   ├── session.ts         # Conversation open/new/delete/export IPC, knowledge-profile switching
+│   │   ├── knowledge-context.ts # Knowledge retrieval for a request (+ optional AI query rewrite)
+│   │   ├── window-control.ts  # Always-on-top guard, soft hide (Windows), opacity, window movement
+│   │   ├── events.ts          # sendChatEvent / sendVisionEvent: forward to renderer + record in conversation
+│   │   └── chat-documents.ts, messages.ts, errors.ts  # Pure helpers (unit tested)
+│   ├── ai.ts                # Vercel AI SDK integration, streaming functions
+│   ├── conversations.ts     # Conversation persistence (userData/conversations), assets, markdown export
+│   ├── knowledge/           # Local job-profile knowledge base: parse worker, minisearch index, IPC
 │   ├── settings.ts          # App settings object + IPC handlers
+│   ├── secrets.ts           # API keys encrypted with safeStorage in userData/secrets.json
 │   ├── state.ts             # App state object + IPC handlers
-│   ├── take-screenshot.ts   # desktopCapturer → base64 PNG
-│   ├── transcription.ts     # DashScope WebSocket real-time speech-to-text
+│   ├── take-screenshot.ts   # desktopCapturer → base64 JPEG/PNG of the display under the cursor
+│   ├── transcription.ts     # DashScope / Volcengine WebSocket real-time speech-to-text
 │   ├── auto-updater.ts      # electron-updater (non-macOS only)
 │   └── index.d.ts           # global.mainWindow type declaration
 ├── preload/
@@ -199,7 +212,8 @@ A second `BrowserWindow` (`src/main/toolbar-window.ts`) that renders the `/toolb
 
 ### Stream Abort Pattern
 
-- `StreamContext` with `AbortController` and `reason` (`'user'` | `'new-request'`)
+- `StreamContext` (`assistant/stream-context.ts`) with `AbortController` and `reason` (`'user'` | `'new-request'` | `'clear-chat'` | `'profile-switch'`); only one vision or chat stream runs at a time
+- Each stream kind registers a persister that saves its model history on release; `onStreamIdle` lets the voice auto-reply queue continue
 - New requests automatically abort previous streams
 - User can manually stop via shortcut or UI button
 - Abort reason determines which IPC event to send (`solution-stopped` for user, silent for new-request)
@@ -280,8 +294,10 @@ These are read by dotenv in the main process and merged with renderer-side setti
 
 5. **No shared types directory**: Main process types (`AppSettings`, `AppState`) are imported directly by the preload script from `../main/settings` and `../main/state`. This works because preload shares the Node.js tsconfig.
 
-6. **Streaming orchestration is in `shortcuts.ts`**: Despite the filename, this 580+ line file is the central orchestrator for both global shortcuts AND AI streaming logic. It manages conversation history, abort controllers, and IPC communication for the entire AI workflow.
+6. **Streaming orchestration is in `src/main/assistant/`**: `shortcuts.ts` only maps shortcut actions to functions exported from there. Dependency direction is `stream-context ← chat ← vision ← session ← shortcuts`; keep it acyclic (vision may import chat, never the reverse).
 
 7. **Window movement**: The window can be moved via keyboard shortcuts in 200px steps (up/down/left/right).
 
 8. **macOS auto-update is disabled**: `publish: null` in electron-builder.yml for mac target. Auto-update only works on Windows.
+
+9. **API keys never live in localStorage**: `SECRET_SETTING_KEYS` (`preload/contracts.ts`) are stripped by the settings store's `partialize` and stored encrypted by `src/main/secrets.ts`. The renderer still receives them in memory via `getAppSettings`.
