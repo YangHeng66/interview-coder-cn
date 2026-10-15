@@ -470,6 +470,15 @@ export function omitSecretSettings<T extends object>(source: T): Partial<T> {
   ) as Partial<T>
 }
 
+/** Screenshots are base64 without a data-URL prefix; JPEG data always starts with FF D8 FF */
+export function getImageMediaType(base64: string): 'image/jpeg' | 'image/png' {
+  return base64.startsWith('/9j/') ? 'image/jpeg' : 'image/png'
+}
+
+export function getImageExtension(base64: string): '.jpg' | '.png' {
+  return getImageMediaType(base64) === 'image/jpeg' ? '.jpg' : '.png'
+}
+
 export const DEEPSEEK_API_BASE_URL = 'https://api.deepseek.com'
 export const DEEPSEEK_DEFAULT_MODEL = 'deepseek-v4-flash'
 export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro'] as const

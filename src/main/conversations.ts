@@ -3,12 +3,13 @@ import { mkdir, readFile, writeFile, rename, unlink, rm } from 'node:fs/promises
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { ModelMessage } from 'ai'
-import type {
-  AssistantMode,
-  ChatEvent,
-  ConversationSummary,
-  ConversationView,
-  KnowledgeContextUsed
+import {
+  getImageExtension,
+  type AssistantMode,
+  type ChatEvent,
+  type ConversationSummary,
+  type ConversationView,
+  type KnowledgeContextUsed
 } from '../preload/contracts'
 import appConfig from '../../app.config.json'
 
@@ -52,7 +53,7 @@ async function serializeConversation(conversation: Conversation): Promise<string
   const imageFile = (data: string) => {
     const existing = files.get(data)
     if (existing) return existing
-    const file = `${randomUUID()}.png`
+    const file = `${randomUUID()}${getImageExtension(data)}`
     files.set(data, file)
     pending.push({ data, file })
     return file

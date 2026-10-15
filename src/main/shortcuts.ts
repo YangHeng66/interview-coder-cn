@@ -55,6 +55,7 @@ import {
   CHAT_DOCUMENT_MAX_FILES,
   CHAT_DOCUMENT_MAX_FILE_BYTES,
   CHAT_DOCUMENT_MAX_TOTAL_CHARACTERS,
+  getImageMediaType,
   isSupportedChatDocument,
   type ChatDocument,
   type AssistantMode,
@@ -890,7 +891,8 @@ const callbacks: Record<string, () => void> = {
             },
             {
               type: 'image',
-              image: screenshotData
+              image: screenshotData,
+              mediaType: getImageMediaType(screenshotData)
             }
           ]
         }
@@ -1025,7 +1027,8 @@ const callbacks: Record<string, () => void> = {
           },
           {
             type: 'image',
-            image: screenshotData
+            image: screenshotData,
+            mediaType: getImageMediaType(screenshotData)
           }
         ]
       }

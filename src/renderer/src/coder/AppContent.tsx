@@ -11,6 +11,7 @@ import ShortcutRenderer from '@/components/ShortcutRenderer'
 import { KnowledgeSources } from '@/components/KnowledgeSources'
 import { useKnowledgeStore } from '@/lib/store/knowledge'
 import { toast } from 'sonner'
+import { getImageMediaType } from '../../../preload/contracts'
 
 const SCROLL_OFFSET = 120
 
@@ -211,7 +212,7 @@ export function AppContent() {
                   >
                     <img
                       key={index}
-                      src={`data:image/png;base64,${data}`}
+                      src={`data:${getImageMediaType(data)};base64,${data}`}
                       alt={`Screenshot ${index + 1}`}
                       className="h-20 w-32 rounded border border-border bg-black/20 object-contain transition-colors hover:border-primary"
                     />
@@ -221,7 +222,7 @@ export function AppContent() {
             ) : screenshotData ? (
               <div className="mb-4">
                 <img
-                  src={`data:image/png;base64,${screenshotData}`}
+                  src={`data:${getImageMediaType(screenshotData)};base64,${screenshotData}`}
                   alt="Screenshot"
                   className="h-auto w-40 rounded-lg border border-border shadow-lg"
                 />
@@ -242,7 +243,7 @@ export function AppContent() {
             <DialogTitle>截图</DialogTitle>
             {preview && (
               <img
-                src={`data:image/png;base64,${preview}`}
+                src={`data:${getImageMediaType(preview)};base64,${preview}`}
                 alt="截图原图"
                 className="h-auto w-full"
               />

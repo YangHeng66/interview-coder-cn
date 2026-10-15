@@ -12,6 +12,12 @@
     "moveStep": 200,
     "opacityStep": 0.05
   },
+  "screenshot": {
+    "display": "cursor",
+    "format": "jpeg",
+    "jpegQuality": 85,
+    "maxLongEdge": 2560
+  },
   "performance": {
     "streamFlushIntervalMs": 40,
     "knowledgeQueryRewrite": false,
