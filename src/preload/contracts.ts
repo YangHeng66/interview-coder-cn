@@ -6,6 +6,14 @@ export function getApiEndpoint(baseURL: string, protocol: ApiProtocol): string {
   return baseURL.trim().replace(/\/+$/, '') + appConfig.protocolPaths[protocol]
 }
 
+export type ModelListInput = {
+  apiProtocol: ApiProtocol
+  apiBaseURL: string
+  apiKey: string
+}
+
+export type ModelListResult = { ok: true; models: string[] } | { ok: false; error: string }
+
 export type ModelDiagnosticInput = {
   apiBaseURL: string
   apiKey: string

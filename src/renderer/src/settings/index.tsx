@@ -46,7 +46,7 @@ import {
 } from '../../../preload/contracts'
 import { isMac } from '@/lib/utils/env'
 import { ApiBaseUrlInput } from './ApiBaseUrlInput'
-import { SelectModel } from './SelectModel'
+import { ModelRow } from './ModelRow'
 import { ThinkingEffortSlider } from './ThinkingEffortSlider'
 import { ModelDiagnostics } from './ModelDiagnostics'
 import { ReaderPreferences } from './ReaderPreferences'
@@ -242,15 +242,11 @@ export default function SettingsPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">
-                Model
-                <span className="ml-2 text-xs font-light">
-                  这里列了几个流行的国内和国外模型，请自行确认你的平台是否支持
-                </span>
-              </label>
-              <SelectModel value={model} onChange={(val) => updateSetting('model', val)} />
-            </div>
+            <ModelRow
+              connection={{ apiProtocol, apiBaseURL, apiKey }}
+              value={model}
+              onChange={(val) => updateSetting('model', val)}
+            />
 
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">思考等级</label>
@@ -365,16 +361,18 @@ export default function SettingsPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Model</label>
-              <SelectModel
-                value={chatModel}
-                onChange={(value) => updateSetting('chatModel', value)}
-                presetModels={DEEPSEEK_MODELS.map((value) => ({ value, label: value }))}
-                customModelValues={chatCustomModels}
-                onCustomModelsChange={(models) => updateSetting('chatCustomModels', models)}
-              />
-            </div>
+            <ModelRow
+              connection={{
+                apiProtocol: chatProvider === 'deepseek' ? 'chat-completions' : chatApiProtocol,
+                apiBaseURL: chatProvider === 'deepseek' ? DEEPSEEK_API_BASE_URL : chatApiBaseURL,
+                apiKey: chatApiKey
+              }}
+              value={chatModel}
+              onChange={(value) => updateSetting('chatModel', value)}
+              presetModels={DEEPSEEK_MODELS.map((value) => ({ value, label: value }))}
+              customModelValues={chatCustomModels}
+              onCustomModelsChange={(models) => updateSetting('chatCustomModels', models)}
+            />
 
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">思考等级</label>

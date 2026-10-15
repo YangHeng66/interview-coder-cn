@@ -30,6 +30,8 @@ import type {
   ConversationView,
   ModelDiagnosticInput,
   ModelDiagnosticResult,
+  ModelListInput,
+  ModelListResult,
   MockInterviewOptions,
   PersonaConversationResult,
   ShortcutRegistration
@@ -95,6 +97,8 @@ const api = {
       ipcRenderer.removeListener('conversation-storage-error', listener)
     }
   },
+  listModels: (input: ModelListInput) =>
+    ipcRenderer.invoke('listModels', input) as Promise<ModelListResult>,
   diagnoseModel: (input: ModelDiagnosticInput) =>
     ipcRenderer.invoke('diagnoseModel', input) as Promise<ModelDiagnosticResult>,
   setShortcutRecording: (recording: boolean) =>

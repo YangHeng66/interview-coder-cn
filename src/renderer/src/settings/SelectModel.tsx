@@ -27,6 +27,7 @@ export function SelectModel({
   disabled,
   className,
   presetModels = defaultModels,
+  detectedModels,
   customModelValues,
   onCustomModelsChange
 }: {
@@ -35,6 +36,8 @@ export function SelectModel({
   disabled?: boolean
   className?: string
   presetModels?: { value: string; label: string }[]
+  /** Models reported by the provider; they replace the built-in suggestions */
+  detectedModels?: string[] | null
   customModelValues?: string[]
   onCustomModelsChange?: (models: string[]) => void
 }) {
@@ -44,10 +47,14 @@ export function SelectModel({
   const customModels = customModelValues ?? storedCustomModels
 
   const models = useMemo(() => {
-    const customItems = customModels.map((m) => ({ value: m, label: m, isCustom: true }))
-    const defaultItems = presetModels.map((m) => ({ ...m, isCustom: false }))
-    return [...customItems, ...defaultItems]
-  }, [customModels, presetModels])
+    const suggestions = detectedModels
+      ? detectedModels.map((m) => ({ value: m, label: m }))
+      : presetModels
+    const customItems = customModels
+      .filter((m) => !suggestions.some((s) => s.value === m))
+      .map((m) => ({ value: m, label: m, isCustom: true }))
+    return [...customItems, ...suggestions.map((m) => ({ ...m, isCustom: false }))]
+  }, [customModels, presetModels, detectedModels])
 
   const updateCustomModels = (models: string[]) => {
     if (onCustomModelsChange) {
@@ -94,7 +101,9 @@ export function SelectModel({
           disabled={disabled}
           className={cn('w-60 justify-between', className)}
         >
-          {value ? (models.find((m) => m.value === value)?.label ?? value) : '选择模型...'}
+          <span className="truncate">
+            {value ? (models.find((m) => m.value === value)?.label ?? value) : '选择模型...'}
+          </span>
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>

@@ -28,6 +28,9 @@
     "knowledgeRewriteMaxTokens": 300,
     "requestHistoryTurns": 0
   },
+  "modelList": {
+    "timeoutMs": 15000
+  },
   "diagnostics": {
     "timeoutMs": 30000,
     "maxOutputTokens": 512,
