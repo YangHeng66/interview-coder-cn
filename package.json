@@ -1,6 +1,6 @@
 {
   "name": "interview-coder-cn",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "桌面多模态 AI 助手，支持截图分析、文字对话、实时语音与本地知识检索",
   "main": "./out/main/index.js",
   "devEngines": {
