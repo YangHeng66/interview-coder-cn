@@ -18,6 +18,7 @@ import type {
   KnowledgeProfilePatch,
   KnowledgeResult,
   KnowledgeSnapshot,
+  SecretStorageStatus,
   TranscriptionConfig,
   TranscriptionTextEvent,
   TranscriptionStatusEvent
@@ -97,6 +98,8 @@ const api = {
   // Update app settings
   updateAppSettings: (settings: Partial<AppSettings>) =>
     ipcRenderer.invoke('updateAppSettings', settings),
+  getSecretStorageStatus: () =>
+    ipcRenderer.invoke('getSecretStorageStatus') as Promise<SecretStorageStatus>,
 
   // Update app state
   updateAppState: (state: Partial<AppState>) => ipcRenderer.invoke('updateAppState', state),

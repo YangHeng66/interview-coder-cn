@@ -440,6 +440,36 @@ export function isSupportedChatDocument(name: string): boolean {
   return CHAT_DOCUMENT_EXTENSIONS.some((extension) => lowerName.endsWith(extension))
 }
 
+/** Settings stored encrypted by the main process instead of the renderer's localStorage */
+export const SECRET_SETTING_KEYS = [
+  'apiKey',
+  'chatApiKey',
+  'dashscopeApiKey',
+  'volcengineAsrApiKey'
+] as const
+
+export type SecretSettingKey = (typeof SECRET_SETTING_KEYS)[number]
+export type SecretSettings = Partial<Record<SecretSettingKey, string>>
+export type SecretStorageStatus = { encrypted: boolean }
+
+export function isSecretSettingKey(key: string): key is SecretSettingKey {
+  return (SECRET_SETTING_KEYS as readonly string[]).includes(key)
+}
+
+export function pickSecretSettings(source: object): SecretSettings {
+  const secrets: SecretSettings = {}
+  for (const [key, value] of Object.entries(source)) {
+    if (isSecretSettingKey(key) && typeof value === 'string') secrets[key] = value
+  }
+  return secrets
+}
+
+export function omitSecretSettings<T extends object>(source: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(source).filter(([key]) => !isSecretSettingKey(key))
+  ) as Partial<T>
+}
+
 export const DEEPSEEK_API_BASE_URL = 'https://api.deepseek.com'
 export const DEEPSEEK_DEFAULT_MODEL = 'deepseek-v4-flash'
 export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro'] as const

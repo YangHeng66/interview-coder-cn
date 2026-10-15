@@ -14,6 +14,8 @@ import {
   DEFAULT_VOLCENGINE_ASR_RESOURCE_ID,
   DEFAULT_VOLCENGINE_ASR_WS_URL,
   normalizeThinkingLevelForModel,
+  omitSecretSettings,
+  pickSecretSettings,
   THINKING_LEVELS,
   type ApiProtocol,
   type ChatProvider,
@@ -234,6 +236,63 @@ const defaultSettings: Settings = {
   audioOutputDeviceId: ''
 }
 
+function migrateSettings(persisted: unknown, version: number): Partial<Settings> {
+  const state = persisted as Partial<Settings>
+  // Drop the legacy codeLanguage field (language now lives in the prompt text)
+  delete (state as Record<string, unknown>).codeLanguage
+  if (version < 12) {
+    state.modelThinkingLevels = {}
+    state.chatModelThinkingLevels = {}
+    state.apiBaseURLHistory = rememberBaseURL([], state.apiBaseURL ?? '')
+    state.chatApiBaseURLHistory = rememberBaseURL([], state.chatApiBaseURL ?? '')
+  }
+  if (version < 13) {
+    state.transcriptionAudioSource = 'system'
+    state.transcriptionAutoReply = false
+  }
+  if (version < 11) {
+    state.transcriptionProvider = 'dashscope'
+    state.dashscopeAsrModel = DEFAULT_DASHSCOPE_ASR_MODEL
+    state.dashscopeAsrWsUrl = DEFAULT_DASHSCOPE_ASR_WS_URL
+    state.volcengineAsrApiKey = ''
+    state.volcengineAsrModel = DEFAULT_VOLCENGINE_ASR_MODEL
+    state.volcengineAsrResourceId = DEFAULT_VOLCENGINE_ASR_RESOURCE_ID
+    state.volcengineAsrWsUrl = DEFAULT_VOLCENGINE_ASR_WS_URL
+  }
+  if (version < 10) {
+    state.chatProvider = 'deepseek'
+    state.chatApiProtocol = 'chat-completions'
+    state.chatApiBaseURL = DEEPSEEK_API_BASE_URL
+    state.chatApiKey = ''
+    state.chatModel = DEEPSEEK_DEFAULT_MODEL
+    state.chatCustomModels = []
+    state.chatSystemPrompt = DEFAULT_CHAT_SYSTEM_PROMPT
+  }
+  if (version < 9) {
+    state.apiProtocol = 'chat-completions'
+  }
+  if (version < 8) {
+    // Hover-delay options are now 0.5s / 1s / 2s; snap the retired ones
+    // so the Select still matches an item
+    if (state.toolbarHoverDelay === 800 || state.toolbarHoverDelay === 1200) {
+      state.toolbarHoverDelay = 1000
+    }
+  }
+  if (version < 5) {
+    // Convert the legacy free-form customPrompt into a custom scene
+    const scenes = createPresetScenes()
+    let activeSceneId = CODING_SCENE_ID
+    const legacyPrompt = (state.customPrompt ?? '').trim()
+    if (legacyPrompt) {
+      const id = `custom-${Date.now()}`
+      scenes.push({ id, name: '自定义场景', prompt: legacyPrompt, isPreset: false })
+      activeSceneId = id
+    }
+    return { ...state, scenes, activeSceneId }
+  }
+  return state
+}
+
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set, get) => ({
@@ -328,60 +387,17 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'interview-coder-settings',
-      version: 13,
-      migrate: (persisted, version) => {
-        const state = persisted as Partial<Settings>
-        // Drop the legacy codeLanguage field (language now lives in the prompt text)
-        delete (state as Record<string, unknown>).codeLanguage
-        if (version < 12) {
-          state.modelThinkingLevels = {}
-          state.chatModelThinkingLevels = {}
-          state.apiBaseURLHistory = rememberBaseURL([], state.apiBaseURL ?? '')
-          state.chatApiBaseURLHistory = rememberBaseURL([], state.chatApiBaseURL ?? '')
-        }
-        if (version < 13) {
-          state.transcriptionAudioSource = 'system'
-          state.transcriptionAutoReply = false
-        }
-        if (version < 11) {
-          state.transcriptionProvider = 'dashscope'
-          state.dashscopeAsrModel = DEFAULT_DASHSCOPE_ASR_MODEL
-          state.dashscopeAsrWsUrl = DEFAULT_DASHSCOPE_ASR_WS_URL
-          state.volcengineAsrApiKey = ''
-          state.volcengineAsrModel = DEFAULT_VOLCENGINE_ASR_MODEL
-          state.volcengineAsrResourceId = DEFAULT_VOLCENGINE_ASR_RESOURCE_ID
-          state.volcengineAsrWsUrl = DEFAULT_VOLCENGINE_ASR_WS_URL
-        }
-        if (version < 10) {
-          state.chatProvider = 'deepseek'
-          state.chatApiProtocol = 'chat-completions'
-          state.chatApiBaseURL = DEEPSEEK_API_BASE_URL
-          state.chatApiKey = ''
-          state.chatModel = DEEPSEEK_DEFAULT_MODEL
-          state.chatCustomModels = []
-          state.chatSystemPrompt = DEFAULT_CHAT_SYSTEM_PROMPT
-        }
-        if (version < 9) {
-          state.apiProtocol = 'chat-completions'
-        }
-        if (version < 8) {
-          // Hover-delay options are now 0.5s / 1s / 2s; snap the retired ones
-          // so the Select still matches an item
-          if (state.toolbarHoverDelay === 800 || state.toolbarHoverDelay === 1200) {
-            state.toolbarHoverDelay = 1000
-          }
-        }
-        if (version < 5) {
-          // Convert the legacy free-form customPrompt into a custom scene
-          const scenes = createPresetScenes()
-          let activeSceneId = CODING_SCENE_ID
-          const legacyPrompt = (state.customPrompt ?? '').trim()
-          if (legacyPrompt) {
-            const id = `custom-${Date.now()}`
-            scenes.push({ id, name: '自定义场景', prompt: legacyPrompt, isPreset: false })
-            activeSceneId = id
-          }
-          return { ...state, scenes, activeSceneId }
+      version: 14,
+      // API keys are stored encrypted by the main process
+      partialize: (state) => omitSecretSettings(state),
+      migrate: async (persisted, version) => {
+        const state = migrateSettings(persisted, version)
+        if (version < 14) {
+          // Zustand rewrites storage right after migrating, which drops the keys from
+          // localStorage, so hand them to the main process first. A rejection aborts
+          // hydration and leaves the old storage untouched.
+          const secrets = pickSecretSettings(state)
+          if (Object.values(secrets).some(Boolean)) await window.api.updateAppSettings(secrets)
         }
         return state
       },

@@ -949,6 +949,7 @@ export default function SettingsPage() {
               用户知识库原件与索引保存在本机；启用知识库后，仅将本次命中的参考片段随问题发送给 AI
               服务，内置前端资料包不会写入用户文档目录。
             </p>
+            <SecretStorageHint />
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">
                 隐身模式
@@ -981,5 +982,20 @@ export default function SettingsPage() {
         </div>
       </div>
     </>
+  )
+}
+
+function SecretStorageHint() {
+  const [encrypted, setEncrypted] = useState<boolean | null>(null)
+  useEffect(() => {
+    void window.api.getSecretStorageStatus().then((status) => setEncrypted(status.encrypted))
+  }, [])
+  if (encrypted === null) return null
+  return (
+    <p className={cn('text-sm', !encrypted && 'text-destructive')}>
+      {encrypted
+        ? 'API Key 已通过系统密钥服务加密保存在本机。'
+        : '当前系统未提供密钥服务，API Key 以明文保存在本机应用数据目录。'}
+    </p>
   )
 }

@@ -6,6 +6,7 @@ import {
   syncToolbarSettings
 } from './toolbar-window'
 import { setContentProtectionEnabled } from './content-protection'
+import { isSecretStorageEncrypted, loadSecrets, persistSecrets } from './secrets'
 import {
   DEEPSEEK_API_BASE_URL,
   DEEPSEEK_DEFAULT_MODEL,
@@ -18,17 +19,31 @@ import {
   type ApiProtocol,
   type ChatProvider,
   type ThinkingLevel,
+  pickSecretSettings,
+  SECRET_SETTING_KEYS,
+  type SecretStorageStatus,
   type TranscriptionAudioSource,
   type TranscriptionProvider
 } from '../preload/contracts'
 
 const settingsListeners = new Set<(settings: AppSettings, patch: Partial<AppSettings>) => void>()
 
-ipcMain.handle('getAppSettings', () => {
+ipcMain.handle('getAppSettings', async () => {
+  await secretsReady
   return settings
 })
 
-ipcMain.handle('updateAppSettings', (_event, _settings) => {
+ipcMain.handle('getSecretStorageStatus', async (): Promise<SecretStorageStatus> => {
+  await secretsReady
+  return { encrypted: isSecretStorageEncrypted() }
+})
+
+ipcMain.handle('updateAppSettings', async (_event, _settings: Partial<AppSettings>) => {
+  // Apply stored keys first so an early renderer sync is not overwritten by them.
+  await secretsReady
+  const secretsChanged = SECRET_SETTING_KEYS.some(
+    (key) => key in _settings && _settings[key] !== settings[key]
+  )
   Object.assign(settings, _settings)
   settingsListeners.forEach((listener) => {
     try {
@@ -50,6 +65,8 @@ ipcMain.handle('updateAppSettings', (_event, _settings) => {
   if ('toolbarHoverDelay' in _settings) {
     syncToolbarSettings(settings.toolbarHoverDelay)
   }
+  // Rejects on failure so the renderer's v14 migration keeps the keys in localStorage
+  if (secretsChanged) await persistSecrets(pickSecretSettings(settings))
 })
 
 /** Show/hide the macOS dock icon. No-op on other platforms. */
@@ -115,3 +132,11 @@ export function subscribeAppSettings(
   settingsListeners.add(listener)
   return () => settingsListeners.delete(listener)
 }
+
+const secretsReady = app.whenReady().then(async () => {
+  const stored = await loadSecrets()
+  for (const key of SECRET_SETTING_KEYS) {
+    // Empty stored values keep the .env default
+    if (stored[key]) settings[key] = stored[key]
+  }
+})
