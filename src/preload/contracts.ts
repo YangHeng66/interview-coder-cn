@@ -578,6 +578,8 @@ export type ChatEvent =
       text: string
       source: ChatMessageSource
       documents?: ChatDocument[]
+      /** An earlier request of the same voice turn whose question and answer this one replaces */
+      replacesRequestId?: string
     }
   | {
       type: 'assistant-start'

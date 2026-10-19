@@ -220,6 +220,10 @@ export function recordChatEvent(event: ChatEvent) {
   if (event.type === 'auto-reply-queue' || event.type === 'request-error') return
   const conversation = activeConversation('chat')
   if (event.type === 'user-message') {
+    if (event.replacesRequestId)
+      conversation.chatMessages = conversation.chatMessages.filter(
+        (message) => message.requestId !== event.replacesRequestId
+      )
     // Persona conversations are titled when created
     if (!conversation.chatMessages.length && !conversation.persona)
       conversation.title = (event.text || event.documents?.[0]?.name || '文字对话').slice(

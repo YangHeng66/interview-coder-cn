@@ -26,7 +26,7 @@ import { extractErrorMessage } from './errors'
 import { sendChatEvent } from './events'
 import { getActiveJobProfile, retrieveKnowledgeContext } from './knowledge-context'
 import { buildPersonaSystemPrompt } from './personas'
-import { createRecentKnowledgeContext } from './messages'
+import { ChatHistoryTail, createRecentKnowledgeContext } from './messages'
 import {
   abortCurrentStream,
   detachCurrentStream,
@@ -40,6 +40,7 @@ import {
 } from './stream-context'
 
 let chatConversationMessages: ModelMessage[] = []
+const chatHistoryTail = new ChatHistoryTail()
 
 const autoReplyTurn = new AutoReplyTurn()
 let autoReplyNotice: string | null = null
@@ -104,10 +105,12 @@ export function stopCurrentStream(): boolean {
 
 export function restoreChatModels(): void {
   chatConversationMessages = activeConversation('chat').modelMessages
+  chatHistoryTail.reset()
 }
 
 export function resetChatModels(): void {
   chatConversationMessages = []
+  chatHistoryTail.reset()
 }
 
 function rejectChatRequest(error: string): ChatRequestResult {
@@ -220,9 +223,11 @@ export function sendAutoReplyTurn(): void {
   })
   // The user-stop path closes the interrupted answer in the renderer before the turn starts
   interruptChatStream(false)
-  autoReplyTurn.markSent()
+  const replacesRequestId = autoReplyTurn.requestId ?? undefined
+  const requestId = randomUUID()
+  autoReplyTurn.markSent(requestId)
   autoReplyNotice = null
-  acceptChatRequest(text, 'transcription')
+  acceptChatRequest(text, 'transcription', [], { requestId, replacesRequestId })
   publishAutoReplyState()
 }
 
@@ -311,6 +316,7 @@ async function runChatRequest(
       role: 'assistant',
       content: assistantResponse
     })
+    chatHistoryTail.record(requestId, chatConversationMessages)
     sendChatEvent({
       type: 'assistant-complete',
       requestId,
@@ -336,9 +342,12 @@ async function runChatRequest(
 function acceptChatRequest(
   text: string,
   source: ChatMessageSource,
-  documents: ChatDocument[] = []
+  documents: ChatDocument[] = [],
+  {
+    requestId = randomUUID(),
+    replacesRequestId
+  }: { requestId?: string; replacesRequestId?: string } = {}
 ): ChatRequestResult {
-  const requestId = randomUUID()
   const userMessageId = randomUUID()
   const assistantMessageId = randomUUID()
   const userMessage: ModelMessage = {
@@ -353,6 +362,12 @@ function acceptChatRequest(
     assistantMessageId
   }
 
+  // The model must not see the half question and its answer next to the whole one
+  const history = chatHistoryTail.withoutReplaced(chatConversationMessages, replacesRequestId)
+  if (history !== chatConversationMessages) {
+    chatConversationMessages = history
+    saveConversationModels('chat', history)
+  }
   logTimeline('chat-request', { requestId, source, text })
   setCurrentStream(streamContext)
   setAssistantMode('chat')
@@ -362,7 +377,8 @@ function acceptChatRequest(
     messageId: userMessageId,
     text,
     source,
-    documents: documents.length ? documents : undefined
+    documents: documents.length ? documents : undefined,
+    replacesRequestId
   })
   sendChatEvent({ type: 'assistant-start', requestId, messageId: assistantMessageId })
   const knowledgeQuery = [text, ...documents.map((document) => document.name)]
@@ -410,6 +426,7 @@ function clearChatConversation(): void {
     setCurrentStream(null)
   }
   chatConversationMessages = []
+  chatHistoryTail.reset()
   sendChatEvent({ type: 'conversation-cleared' })
 }
 

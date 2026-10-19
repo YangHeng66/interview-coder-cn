@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ModelMessage } from 'ai'
 import { createChatModelText, normalizeChatDocuments } from './chat-documents'
 import { extractErrorMessage } from './errors'
-import { createRecentKnowledgeContext, getMessageText } from './messages'
+import { ChatHistoryTail, createRecentKnowledgeContext, getMessageText } from './messages'
 import { normalizeShortcutKey } from '../shortcut-keys'
 
 describe('extractErrorMessage', () => {
@@ -69,6 +69,62 @@ describe('message text helpers', () => {
 
   it('summarizes recent turns for knowledge retrieval', () => {
     expect(createRecentKnowledgeContext(messages)).toBe('user: 题目\nassistant: 解答')
+  })
+})
+
+describe('ChatHistoryTail', () => {
+  const exchange = (question: string): ModelMessage[] => [
+    { role: 'user', content: question },
+    { role: 'assistant', content: `answer to ${question}` }
+  ]
+
+  it('drops the exchange of a replaced request while it is the last one', () => {
+    const tail = new ChatHistoryTail()
+    const history = [...exchange('earlier'), ...exchange('你好')]
+    tail.record('half', history)
+
+    expect(tail.withoutReplaced(history, 'half')).toEqual(exchange('earlier'))
+  })
+
+  it('keeps the history when another request answered after the replaced one', () => {
+    const tail = new ChatHistoryTail()
+    const history = exchange('你好')
+    tail.record('half', history)
+    history.push(...exchange('typed'))
+    tail.record('typed', history)
+
+    expect(tail.withoutReplaced(history, 'half')).toBe(history)
+  })
+
+  it('keeps the history when the replaced request never answered', () => {
+    const tail = new ChatHistoryTail()
+    const history = exchange('earlier')
+    tail.record('earlier', history)
+
+    expect(tail.withoutReplaced(history, 'half')).toBe(history)
+    expect(tail.withoutReplaced(history, undefined)).toBe(history)
+  })
+
+  it('keeps a history that changed without a recorded exchange', () => {
+    const tail = new ChatHistoryTail()
+    tail.record('half', exchange('你好'))
+
+    const restored = [...exchange('other'), ...exchange('conversation')]
+    expect(tail.withoutReplaced(restored, 'half')).toBe(restored)
+
+    const history = exchange('你好')
+    tail.record('half', history)
+    tail.reset()
+    expect(tail.withoutReplaced(history, 'half')).toBe(history)
+  })
+
+  it('forgets the dropped exchange so an earlier one is never dropped next', () => {
+    const tail = new ChatHistoryTail()
+    const history = [...exchange('earlier'), ...exchange('你好')]
+    tail.record('half', history)
+    const trimmed = tail.withoutReplaced(history, 'half')
+
+    expect(tail.withoutReplaced(trimmed, 'half')).toBe(trimmed)
   })
 })
 

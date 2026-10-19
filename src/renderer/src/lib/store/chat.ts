@@ -53,13 +53,18 @@ function appendMessage(messages: ChatMessage[], message: ChatMessage): ChatMessa
   return messages.some((item) => item.id === message.id) ? messages : [...messages, message]
 }
 
+/** A resend of the same voice turn takes the place of the earlier question and its answer */
+function withoutRequest(messages: ChatMessage[], requestId: string | undefined): ChatMessage[] {
+  return requestId ? messages.filter((message) => message.requestId !== requestId) : messages
+}
+
 export const useChatStore = create<ChatStore>()((set) => ({
   ...defaultState,
   handleEvent: (event) => {
     switch (event.type) {
       case 'user-message':
         set((state) => ({
-          messages: appendMessage(state.messages, {
+          messages: appendMessage(withoutRequest(state.messages, event.replacesRequestId), {
             id: event.messageId,
             requestId: event.requestId,
             role: 'user',

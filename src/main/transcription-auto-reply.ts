@@ -54,6 +54,7 @@ export function shouldTriggerAutoReply(
 export class AutoReplyTurn {
   private text = ''
   private sentContent = ''
+  private sentRequestId: string | null = null
   private gapTimer: Timer | null = null
   /** Last change in what is being said; null until speech is seen in this turn */
   private lastSpeechAt: number | null = null
@@ -82,8 +83,14 @@ export class AutoReplyTurn {
     return growth >= (this.sentContent ? MIN_RESEND_GROWTH : 1) ? this.text.trim() : null
   }
 
-  markSent(): void {
+  /** The last request that carried this turn; a resend replaces it on screen */
+  get requestId(): string | null {
+    return this.sentRequestId
+  }
+
+  markSent(requestId: string | null = null): void {
     this.sentContent = spokenContent(this.text)
+    this.sentRequestId = requestId
   }
 
   clear(): void {
@@ -91,6 +98,7 @@ export class AutoReplyTurn {
     this.gapTimer = null
     this.text = ''
     this.sentContent = ''
+    this.sentRequestId = null
     this.lastSpeechAt = null
   }
 

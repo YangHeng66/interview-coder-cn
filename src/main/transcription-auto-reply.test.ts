@@ -28,6 +28,20 @@ describe('AutoReplyTurn', () => {
     expect(turn.pendingRequest).toBe('那我们聊聊前端性能，你说说重绘和回流有什么区别？')
   })
 
+  it('remembers the request that carried the turn until the turn ends', () => {
+    const turn = new AutoReplyTurn()
+    turn.append('那我们聊聊前端性能')
+    turn.markSent('first')
+    turn.append('，你说说重绘和回流有什么区别？')
+    expect(turn.requestId).toBe('first')
+
+    turn.markSent('second')
+    expect(turn.requestId).toBe('second')
+
+    vi.advanceTimersByTime(AUTO_REPLY_TURN_GAP_MS)
+    expect(turn.requestId).toBeNull()
+  })
+
   it('does not resend when only punctuation was added', () => {
     const turn = new AutoReplyTurn()
     turn.append('你说说重绘和回流有什么区别')
