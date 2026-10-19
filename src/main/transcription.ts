@@ -1,12 +1,15 @@
 import { ipcMain } from 'electron'
+import { randomUUID } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import WebSocket from 'ws'
 import {
   getTranscriptionConfigError,
+  type TranscriptionChannel,
   type TranscriptionConfig,
+  type TranscriptionSpeaker,
   type TranscriptionStatus
 } from '../preload/contracts'
-import { TranscriptionBuffer } from './transcription-buffer'
+import { SpeakerTranscript, speakerForChannel } from './transcription-speakers'
 import appConfig from '../../app.config.json'
 
 const config = appConfig.transcription
@@ -15,15 +18,23 @@ const PARTIAL_IDLE_TIMEOUT_MS = config.partialIdleMs
 const VOLCENGINE_FULL_REQUEST_HEADER = Buffer.from([0x11, 0x10, 0x11, 0x00])
 const VOLCENGINE_AUDIO_REQUEST_HEADER = Buffer.from([0x11, 0x20, 0x01, 0x00])
 const VOLCENGINE_FINAL_AUDIO_REQUEST_HEADER = Buffer.from([0x11, 0x22, 0x01, 0x00])
+const TRANSCRIPTION_CHANNELS: TranscriptionChannel[] = ['system', 'microphone']
+const CHANNEL_LABELS: Record<TranscriptionChannel, string> = {
+  system: '系统音频',
+  microphone: '麦克风'
+}
 
 type TranscriptionSession = {
+  /** Provider task / connect id, unique per connection */
   id: string
+  run: TranscriptionRun
+  /** null when the run captures a single audio source */
+  channel: TranscriptionChannel | null
   config: TranscriptionConfig
   socket: WebSocket
   ready: boolean
   taskStarted: boolean
   finishing: boolean
-  stoppedNotified: boolean
   pendingAudio: Buffer | null
   finishTimer: NodeJS.Timeout | null
   partialTimer: NodeJS.Timeout | null
@@ -35,12 +46,22 @@ type TranscriptionSession = {
   complete: () => void
 }
 
+/** One start/stop cycle requested by the renderer; mixed capture runs one session per channel */
+type TranscriptionRun = {
+  id: string
+  sessions: TranscriptionSession[]
+  listening: boolean
+  stoppedNotified: boolean
+  completion: Promise<void> | null
+}
+
 export type TranscriptionEventReason = 'provider' | 'silence' | 'stopped'
 
 export type TranscriptionEvent = {
   text: string
   isPartial: boolean
   reason?: TranscriptionEventReason
+  speaker?: TranscriptionSpeaker | null
 }
 
 type VolcengineFrame = {
@@ -51,9 +72,9 @@ type VolcengineFrame = {
   payloadText: string
 }
 
-let activeSession: TranscriptionSession | null = null
+let activeRun: TranscriptionRun | null = null
 let isTranscribing = false
-const transcriptionBuffer = new TranscriptionBuffer()
+const transcript = new SpeakerTranscript()
 const transcriptionListeners = new Set<(event: TranscriptionEvent) => void>()
 
 export function subscribeTranscription(listener: (event: TranscriptionEvent) => void): () => void {
@@ -68,18 +89,37 @@ function sendToRenderer(channel: string, ...args: unknown[]) {
   }
 }
 
-function publishTranscription(isPartial: boolean, reason?: TranscriptionEventReason): void {
-  if (!isPartial) transcriptionBuffer.confirmPartial()
+function isActive(session: TranscriptionSession): boolean {
+  return activeRun?.sessions.includes(session) ?? false
+}
+
+function speakerOf(session: TranscriptionSession): TranscriptionSpeaker | null {
+  return speakerForChannel(session.channel)
+}
+
+function sendTranscriptText(isPartial: boolean): void {
+  sendToRenderer('transcription-text', {
+    text: transcript.getText(),
+    isPartial,
+    lines: transcript.getLines()
+  })
+}
+
+function publishTranscription(
+  speaker: TranscriptionSpeaker | null,
+  isPartial: boolean,
+  reason?: TranscriptionEventReason
+): void {
+  // A silence fallback may still be revised by the provider, so only provider
+  // results and the final flush are frozen into the ordered speaker history.
+  if (!isPartial) transcript.confirm(speaker, reason !== 'silence')
   const event: TranscriptionEvent = {
     text: getTranscriptionText(),
     isPartial,
-    reason
+    reason,
+    speaker
   }
-  sendToRenderer('transcription-text', {
-    text: event.text,
-    isPartial: event.isPartial,
-    ...transcriptionBuffer.getSegments()
-  })
+  sendTranscriptText(isPartial)
   transcriptionListeners.forEach((listener) => {
     try {
       listener(event)
@@ -96,7 +136,10 @@ function clearPartialTimer(session: TranscriptionSession): void {
 }
 
 function schedulePartialFinalization(session: TranscriptionSession): void {
-  const snapshot = getTranscriptionText()
+  // Compare only this channel's text: the other channel keeps changing the
+  // combined transcript and would otherwise prevent the silence fallback.
+  const speaker = speakerOf(session)
+  const snapshot = transcript.getSpeakerText(speaker)
   if (session.partialTimer && session.partialSnapshot === snapshot) return
   clearPartialTimer(session)
   if (!snapshot.trim()) return
@@ -104,30 +147,40 @@ function schedulePartialFinalization(session: TranscriptionSession): void {
 
   session.partialTimer = setTimeout(() => {
     session.partialTimer = null
-    if (activeSession !== session || session.finishing || getTranscriptionText() !== snapshot) {
+    if (
+      !isActive(session) ||
+      session.finishing ||
+      transcript.getSpeakerText(speaker) !== snapshot
+    ) {
       return
     }
-    publishTranscription(false, 'silence')
+    publishTranscription(speaker, false, 'silence')
   }, PARTIAL_IDLE_TIMEOUT_MS)
 }
 
-function publishStatus(session: TranscriptionSession, status: TranscriptionStatus): void {
-  sendToRenderer('transcription-status', { sessionId: session.id, status })
+function publishStatus(run: TranscriptionRun, status: TranscriptionStatus): void {
+  sendToRenderer('transcription-status', { sessionId: run.id, status })
+}
+
+function publishListeningIfReady(run: TranscriptionRun): void {
+  if (run.listening || !run.sessions.every((session) => session.taskStarted)) return
+  run.listening = true
+  publishStatus(run, 'listening')
 }
 
 function markReady(session: TranscriptionSession): void {
   session.taskStarted = true
   if (session.connectionTimer) clearTimeout(session.connectionTimer)
   session.connectionTimer = null
-  publishStatus(session, 'listening')
+  publishListeningIfReady(session.run)
   for (const audio of session.startupAudio) sendAudio(session, audio)
   session.startupAudio = []
   session.startupBytes = 0
 }
 
-function notifyStopped(session: TranscriptionSession): void {
-  if (session.stoppedNotified) return
-  session.stoppedNotified = true
+function notifyStopped(run: TranscriptionRun): void {
+  if (run.stoppedNotified) return
+  run.stoppedNotified = true
   sendToRenderer('transcription-stopped')
 }
 
@@ -146,7 +199,8 @@ function disposeSocket(socket: WebSocket): void {
 }
 
 function finishSession(session: TranscriptionSession, notify = true): void {
-  if (activeSession !== session) return
+  if (!isActive(session)) return
+  const run = session.run
 
   if (session.finishTimer) {
     clearTimeout(session.finishTimer)
@@ -155,26 +209,39 @@ function finishSession(session: TranscriptionSession, notify = true): void {
   clearPartialTimer(session)
   if (session.connectionTimer) clearTimeout(session.connectionTimer)
   session.startupAudio = []
-  const shouldPublishFinal = session.finishing
-  transcriptionBuffer.finalizeCurrentPartial()
-  if (shouldPublishFinal && getTranscriptionText().trim()) {
-    publishTranscription(false, 'stopped')
+  const speaker = speakerOf(session)
+  transcript.finalizePartial(speaker)
+  if (session.finishing && getTranscriptionText().trim()) {
+    publishTranscription(speaker, false, 'stopped')
   }
-  activeSession = null
-  isTranscribing = false
+  run.sessions = run.sessions.filter((item) => item !== session)
   disposeSocket(session.socket)
-  if (notify) publishStatus(session, 'stopped')
-  if (notify) notifyStopped(session)
   session.complete()
+  if (run.sessions.length > 0) return
+
+  if (activeRun === run) activeRun = null
+  isTranscribing = false
+  if (notify) publishStatus(run, 'stopped')
+  if (notify) notifyStopped(run)
 }
 
+function finishRun(run: TranscriptionRun): void {
+  for (const session of [...run.sessions]) finishSession(session, false)
+}
+
+/** A failed channel stops the whole run: a silently dead interviewer channel would stop auto replies */
 function failSession(session: TranscriptionSession, message: string): void {
-  if (activeSession !== session) return
-  console.error(`[Transcription:${session.config.provider}] ${message}`)
-  sendToRenderer('transcription-error', message)
-  publishStatus(session, 'error')
-  finishSession(session, false)
-  notifyStopped(session)
+  if (!isActive(session)) return
+  const run = session.run
+  const prefix =
+    session.channel && run.sessions.length > 1 ? `${CHANNEL_LABELS[session.channel]}：` : ''
+  console.error(
+    `[Transcription:${session.config.provider}${session.channel ? `:${session.channel}` : ''}] ${message}`
+  )
+  sendToRenderer('transcription-error', `${prefix}${message}`)
+  publishStatus(run, 'error')
+  finishRun(run)
+  notifyStopped(run)
 }
 
 function scheduleFinishTimeout(session: TranscriptionSession): void {
@@ -220,12 +287,19 @@ function normalizeTranscriptionConfig(value: unknown): TranscriptionConfig {
   return config
 }
 
+/** Speakers are only told apart when both channels are captured */
+function normalizeChannels(value: unknown): (TranscriptionChannel | null)[] {
+  if (!Array.isArray(value)) return [null]
+  const channels = TRANSCRIPTION_CHANNELS.filter((channel) => value.includes(channel))
+  return channels.length > 1 ? channels : [null]
+}
+
 function sendSocketData(
   session: TranscriptionSession,
   data: string | Buffer,
   errorMessage: string
 ): void {
-  if (activeSession !== session || session.socket.readyState !== WebSocket.OPEN) return
+  if (!isActive(session) || session.socket.readyState !== WebSocket.OPEN) return
   try {
     session.socket.send(data, (error) => {
       if (error) failSession(session, `${errorMessage}：${error.message}`)
@@ -253,7 +327,7 @@ function attachCommonSocketHandlers(session: TranscriptionSession): void {
 
 function attachDashScopeHandlers(session: TranscriptionSession): void {
   session.socket.on('open', () => {
-    if (activeSession !== session) return
+    if (!isActive(session)) return
     session.ready = true
     sendSocketData(
       session,
@@ -280,7 +354,7 @@ function attachDashScopeHandlers(session: TranscriptionSession): void {
   })
 
   session.socket.on('message', (data: WebSocket.Data) => {
-    if (activeSession !== session) return
+    if (!isActive(session)) return
     try {
       const message = JSON.parse(data.toString())
       const event = message.header?.event
@@ -296,13 +370,14 @@ function attachDashScopeHandlers(session: TranscriptionSession): void {
 
         const text = typeof sentence.text === 'string' ? sentence.text : ''
         const sentenceEnd = sentence.sentence_end === true
+        const speaker = speakerOf(session)
         if (sentenceEnd) {
           clearPartialTimer(session)
-          transcriptionBuffer.finishSentence(text)
-          publishTranscription(false, 'provider')
+          transcript.finishSentence(speaker, text)
+          publishTranscription(speaker, false, 'provider')
         } else {
-          transcriptionBuffer.updatePartial(text)
-          publishTranscription(true)
+          transcript.updatePartial(speaker, text)
+          publishTranscription(speaker, true)
           schedulePartialFinalization(session)
         }
         return
@@ -442,7 +517,8 @@ function handleVolcengineMessage(session: TranscriptionSession, data: WebSocket.
     if (result && typeof result === 'object') {
       const resultRecord = result as Record<string, unknown>
       if (typeof resultRecord.text === 'string') {
-        transcriptionBuffer.updatePartial(resultRecord.text)
+        const speaker = speakerOf(session)
+        transcript.updatePartial(speaker, resultRecord.text)
         const utterances = Array.isArray(resultRecord.utterances) ? resultRecord.utterances : []
         const lastUtterance = utterances.at(-1)
         const lastIsDefinite =
@@ -451,11 +527,11 @@ function handleVolcengineMessage(session: TranscriptionSession, data: WebSocket.
           (lastUtterance as Record<string, unknown>).definite === true
         const isPartial = !frame.isFinal && !lastIsDefinite
         if (isPartial) {
-          publishTranscription(true)
+          publishTranscription(speaker, true)
           schedulePartialFinalization(session)
         } else {
           clearPartialTimer(session)
-          publishTranscription(false, 'provider')
+          publishTranscription(speaker, false, 'provider')
         }
       }
     }
@@ -468,7 +544,7 @@ function handleVolcengineMessage(session: TranscriptionSession, data: WebSocket.
 
 function attachVolcengineHandlers(session: TranscriptionSession): void {
   session.socket.on('open', () => {
-    if (activeSession !== session) return
+    if (!isActive(session)) return
     session.ready = true
     sendSocketData(
       session,
@@ -479,7 +555,7 @@ function attachVolcengineHandlers(session: TranscriptionSession): void {
   })
 
   session.socket.on('message', (data: WebSocket.Data) => {
-    if (activeSession !== session) return
+    if (!isActive(session)) return
     try {
       handleVolcengineMessage(session, data)
     } catch (error) {
@@ -489,14 +565,12 @@ function attachVolcengineHandlers(session: TranscriptionSession): void {
   })
 }
 
-function startTranscription(value: unknown, sessionId: string): void {
-  const config = normalizeTranscriptionConfig(value)
-  if (activeSession) {
-    finishSession(activeSession, false)
-  } else {
-    transcriptionBuffer.finalizeCurrentPartial()
-  }
-
+function createSession(
+  run: TranscriptionRun,
+  config: TranscriptionConfig,
+  channel: TranscriptionChannel | null,
+  sessionId: string
+): TranscriptionSession {
   const headers =
     config.provider === 'dashscope'
       ? { Authorization: `bearer ${config.apiKey}` }
@@ -512,12 +586,13 @@ function startTranscription(value: unknown, sessionId: string): void {
   })
   const session: TranscriptionSession = {
     id: sessionId,
+    run,
+    channel,
     config,
     socket,
     ready: false,
     taskStarted: false,
     finishing: false,
-    stoppedNotified: false,
     pendingAudio: null,
     finishTimer: null,
     partialTimer: null,
@@ -529,9 +604,6 @@ function startTranscription(value: unknown, sessionId: string): void {
     complete
   }
 
-  activeSession = session
-  isTranscribing = true
-  publishStatus(session, 'connecting')
   session.connectionTimer = setTimeout(
     () => failSession(session, '语音服务连接超时'),
     appConfig.transcription.connectionTimeoutMs
@@ -542,21 +614,37 @@ function startTranscription(value: unknown, sessionId: string): void {
   } else {
     attachVolcengineHandlers(session)
   }
+  return session
 }
 
-function stopTranscription(): Promise<void> {
-  const session = activeSession
-  if (!session) return Promise.resolve()
-  if (session.finishing) return session.completion
+function startTranscription(value: unknown, runId: string, channels: unknown): void {
+  const config = normalizeTranscriptionConfig(value)
+  const sessionChannels = normalizeChannels(channels)
+  if (activeRun) finishRun(activeRun)
+  transcript.setSpeakers(sessionChannels.map(speakerForChannel))
 
-  isTranscribing = false
+  const run: TranscriptionRun = {
+    id: runId,
+    sessions: [],
+    listening: false,
+    stoppedNotified: false,
+    completion: null
+  }
+  activeRun = run
+  isTranscribing = true
+  publishStatus(run, 'connecting')
+  sessionChannels.forEach((channel, index) => {
+    // Each connection needs its own task id; the first reuses the renderer's id
+    run.sessions.push(createSession(run, config, channel, index === 0 ? runId : randomUUID()))
+  })
+}
+
+function finishSessionGracefully(session: TranscriptionSession): void {
   session.finishing = true
-  publishStatus(session, 'finishing')
-  notifyStopped(session)
 
   if (session.socket.readyState !== WebSocket.OPEN || !session.taskStarted) {
     finishSession(session)
-    return session.completion
+    return
   }
 
   if (session.config.provider === 'dashscope') {
@@ -579,12 +667,45 @@ function stopTranscription(): Promise<void> {
   }
 
   scheduleFinishTimeout(session)
-  return session.completion
 }
 
-function handleAudioChunk(sessionId: string, chunk: ArrayBuffer): void {
-  const session = activeSession
-  if (!session || session.id !== sessionId || !isTranscribing) return
+function stopTranscription(): Promise<void> {
+  const run = activeRun
+  if (!run) return Promise.resolve()
+  if (run.completion) return run.completion
+
+  run.completion = Promise.all(run.sessions.map((session) => session.completion)).then(
+    () => undefined
+  )
+  isTranscribing = false
+  publishStatus(run, 'finishing')
+  notifyStopped(run)
+  for (const session of [...run.sessions]) finishSessionGracefully(session)
+  return run.completion
+}
+
+/** Mixed capture can lose one source; the remaining channel then behaves like a single source */
+function setTranscriptionChannels(runId: string, channels: unknown): void {
+  const run = activeRun
+  if (!run || run.id !== runId || run.sessions.length < 2 || !Array.isArray(channels)) return
+  const remaining = run.sessions.filter(
+    (session) => session.channel && channels.includes(session.channel)
+  )
+  if (remaining.length !== 1) return
+
+  for (const session of [...run.sessions]) {
+    if (session !== remaining[0]) finishSession(session, false)
+  }
+  remaining[0].channel = null
+  transcript.setSpeakers([null])
+  publishListeningIfReady(run)
+}
+
+function handleAudioChunk(runId: string, chunk: ArrayBuffer, channel: unknown): void {
+  const run = activeRun
+  if (!run || run.id !== runId || !isTranscribing) return
+  const session = run.sessions.find((item) => item.channel === null || item.channel === channel)
+  if (!session) return
 
   const audio = Buffer.from(chunk)
   if (audio.length === 0) return
@@ -618,34 +739,47 @@ function sendAudio(session: TranscriptionSession, audio: Buffer): void {
 }
 
 export function getTranscriptionText(): string {
-  return transcriptionBuffer.getText()
+  return transcript.getText()
 }
 
 export function consumeTranscriptionText(): string {
-  const text = transcriptionBuffer.consume()
-  sendToRenderer('transcription-text', {
-    text: transcriptionBuffer.getText(),
-    isPartial: false,
-    ...transcriptionBuffer.getSegments()
-  })
+  const text = transcript.consume()
+  sendTranscriptText(false)
+  return text
+}
+
+/** Takes confirmed text of every speaker and leaves unconfirmed partials in place */
+export function consumeConfirmedTranscriptionText(): string {
+  const text = transcript.consumeConfirmed()
+  sendTranscriptText(false)
   return text
 }
 
 export function clearTranscriptionText(): void {
-  transcriptionBuffer.clear()
+  transcript.clear()
 }
 
-ipcMain.handle('start-transcription', (_event, config: unknown, sessionId: string) => {
-  startTranscription(config, sessionId)
-})
+ipcMain.handle(
+  'start-transcription',
+  (_event, config: unknown, sessionId: string, channels?: unknown) => {
+    startTranscription(config, sessionId, channels)
+  }
+)
 
 ipcMain.handle('stop-transcription', () => {
   return stopTranscription()
 })
 
-ipcMain.on('transcription-audio-chunk', (_event, sessionId: string, chunk: ArrayBuffer) => {
-  handleAudioChunk(sessionId, chunk)
+ipcMain.handle('set-transcription-channels', (_event, sessionId: string, channels: unknown) => {
+  setTranscriptionChannels(sessionId, channels)
 })
+
+ipcMain.on(
+  'transcription-audio-chunk',
+  (_event, sessionId: string, chunk: ArrayBuffer, channel?: unknown) => {
+    handleAudioChunk(sessionId, chunk, channel)
+  }
+)
 
 ipcMain.handle('get-transcription-text', () => {
   return getTranscriptionText()

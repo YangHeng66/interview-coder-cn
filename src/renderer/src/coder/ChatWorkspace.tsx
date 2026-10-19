@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useRef, useState } from 'react'
 import {
   AudioLines,
   BookmarkPlus,
@@ -33,6 +33,7 @@ import {
   useSettingsStore
 } from '@/lib/store/settings'
 import { useTranscriptionStore } from '@/lib/store/transcription'
+import { parseSpeakerLines, type SpeakerLine } from '@/lib/transcript-lines'
 import { toast } from 'sonner'
 import { TranscriptionBar } from './TranscriptionBar'
 import { MockInterviewBar, MockInterviewDialog } from './MockInterview'
@@ -42,7 +43,9 @@ import {
   CHAT_DOCUMENT_MAX_FILE_BYTES,
   CHAT_DOCUMENT_MAX_TOTAL_CHARACTERS,
   isSupportedChatDocument,
-  type ChatDocument
+  TRANSCRIPTION_SPEAKER_LABELS,
+  type ChatDocument,
+  type TranscriptionSpeaker
 } from '../../../preload/contracts'
 
 const AUTO_SCROLL_THRESHOLD = 120
@@ -177,6 +180,35 @@ function findRequestUserMessage(
   return undefined
 }
 
+const speakerTagStyles: Record<TranscriptionSpeaker, string> = {
+  interviewer: 'bg-sky-400/15 text-sky-300',
+  me: 'bg-emerald-400/15 text-emerald-300'
+}
+
+/** Tags get their own grid column so wrapped text hangs under the text, not under the tag */
+function SpeakerTranscript({ lines }: { lines: SpeakerLine[] }) {
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 gap-y-1.5">
+      {lines.map((line, index) =>
+        line.speaker ? (
+          <Fragment key={index}>
+            <span
+              className={`mt-[3px] rounded-[3px] px-1.5 text-center text-[11px] font-medium leading-[18px] ${speakerTagStyles[line.speaker]}`}
+            >
+              {TRANSCRIPTION_SPEAKER_LABELS[line.speaker]}
+            </span>
+            <p className="break-words">{line.text}</p>
+          </Fragment>
+        ) : (
+          <p key={index} className="col-span-2 break-words">
+            {line.text}
+          </p>
+        )
+      )}
+    </div>
+  )
+}
+
 const ChatMessageItem = memo(function ChatMessageItem({
   message,
   previousUserMessage
@@ -237,6 +269,8 @@ const ChatMessageItem = memo(function ChatMessageItem({
   }
 
   if (message.role === 'user') {
+    const speakerLines =
+      message.source === 'transcription' ? parseSpeakerLines(message.content) : null
     return (
       <div className="flex justify-end">
         <div className="max-w-[82%] rounded-md bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
@@ -259,7 +293,11 @@ const ChatMessageItem = memo(function ChatMessageItem({
               ))}
             </div>
           )}
-          {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+          {speakerLines ? (
+            <SpeakerTranscript lines={speakerLines} />
+          ) : (
+            message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          )}
         </div>
       </div>
     )

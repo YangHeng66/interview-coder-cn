@@ -7,11 +7,12 @@ import { state, subscribeAppState } from '../state'
 import { settings, subscribeAppSettings } from '../settings'
 import {
   getTranscriptionText,
+  consumeConfirmedTranscriptionText,
   consumeTranscriptionText,
   subscribeTranscription
 } from '../transcription'
 import type { TranscriptionEvent } from '../transcription'
-import { TranscriptionAutoReplyQueue } from '../transcription-auto-reply'
+import { shouldTriggerAutoReply, TranscriptionAutoReplyQueue } from '../transcription-auto-reply'
 import type {
   AssistantMode,
   ChatDocument,
@@ -152,6 +153,7 @@ function handleTranscriptionEvent(event: TranscriptionEvent): void {
   if (!settings.transcriptionAutoReply || !state.inCoderPage) return
   if (state.assistantMode !== 'chat') return
   if (state.transcriptionPaused) return
+  if (!shouldTriggerAutoReply(event.speaker, activeConversation('chat').persona)) return
 
   if (!isChatConfigured()) {
     notifyAutoReplyIssue('请先在设置中配置文字对话模型，语音自动回答暂未发送')
@@ -165,7 +167,9 @@ function handleTranscriptionEvent(event: TranscriptionEvent): void {
     return
   }
 
-  const consumedText = consumeTranscriptionText().trim()
+  // My confirmed answers ride along with the interviewer's question; a partial
+  // I'm still speaking stays in the transcript.
+  const consumedText = consumeConfirmedTranscriptionText().trim()
   if (consumedText) {
     autoReplyNotice = null
     autoReplyQueue.add(consumedText)

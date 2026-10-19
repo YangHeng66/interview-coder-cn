@@ -12,11 +12,10 @@ export type AudioCaptureResult = {
 
 let mediaStreams: MediaStream[] = []
 let audioContext: AudioContext | null = null
-let processor: AudioWorkletNode | null = null
-let mixer: GainNode | null = null
+let processors: AudioWorkletNode[] = []
 let sourceNodes: MediaStreamAudioSourceNode[] = []
 let generation = 0
-let acknowledgeFlush: (() => void) | null = null
+const flushWaiters = new Map<AudioWorkletNode, () => void>()
 
 async function openMicrophoneStream(deviceId: string): Promise<MediaStream> {
   const audio: MediaTrackConstraints = {
@@ -119,6 +118,7 @@ export async function startAudioCapture(sessionId: string): Promise<AudioCapture
   }
 
   mediaStreams = streams.map(({ stream }) => stream)
+  const levels: Partial<Record<AudioCaptureSource, number>> = {}
 
   try {
     const context = new AudioContext({
@@ -144,45 +144,42 @@ export async function startAudioCapture(sessionId: string): Promise<AudioCapture
       URL.revokeObjectURL(workletUrl)
     }
     if (generation !== captureGeneration) throw new DOMException('音频采集已取消', 'AbortError')
-    mixer = context.createGain()
-    mixer.channelCount = 1
-    mixer.channelCountMode = 'explicit'
-    mixer.gain.value = mediaStreams.length > 1 ? 0.5 : 1
 
-    sourceNodes = mediaStreams.map((stream) => {
+    // Each source gets its own worklet so the main process can recognize the
+    // interviewer (system audio) and me (microphone) on separate connections.
+    streams.forEach(({ source, stream }) => {
       const audioOnlyStream = new MediaStream(stream.getAudioTracks())
-      const sourceNode = audioContext!.createMediaStreamSource(audioOnlyStream)
+      const sourceNode = context.createMediaStreamSource(audioOnlyStream)
       sourceNode.channelCount = 1
       sourceNode.channelCountMode = 'explicit'
-      sourceNode.connect(mixer!)
-      return sourceNode
-    })
+      sourceNodes.push(sourceNode)
 
-    processor = new AudioWorkletNode(context, 'pcm-capture', {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-      outputChannelCount: [1],
-      processorOptions: {
-        frameSamples: Math.round(
-          (context.sampleRate * appConfig.transcription.frameDurationMs) / 1000
-        )
+      const processor = new AudioWorkletNode(context, 'pcm-capture', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+        processorOptions: {
+          frameSamples: Math.round(
+            (context.sampleRate * appConfig.transcription.frameDurationMs) / 1000
+          )
+        }
+      })
+      processors.push(processor)
+      processor.port.onmessage = ({ data }) => {
+        if (data.type === 'flushed') {
+          flushWaiters.get(processor)?.()
+          return
+        }
+        window.api.sendTranscriptionAudioChunk(sessionId, data.pcm, source)
+        const floor = appConfig.transcription.meterFloorDb
+        const db = data.rms > 0 ? 20 * Math.log10(data.rms) : floor
+        levels[source] = Math.max(0, Math.min(1, (db - floor) / -floor))
+        useTranscriptionStore.getState().setAudioLevel(Math.max(...Object.values(levels)))
       }
+      sourceNode.connect(processor)
+      // The worklet leaves its output silent; captured audio is never played locally.
+      processor.connect(context.destination)
     })
-    processor.port.onmessage = ({ data }) => {
-      if (data.type === 'flushed') {
-        acknowledgeFlush?.()
-        return
-      }
-      window.api.sendTranscriptionAudioChunk(sessionId, data.pcm)
-      const floor = appConfig.transcription.meterFloorDb
-      const db = data.rms > 0 ? 20 * Math.log10(data.rms) : floor
-      useTranscriptionStore
-        .getState()
-        .setAudioLevel(Math.max(0, Math.min(1, (db - floor) / -floor)))
-    }
-    mixer.connect(processor)
-    // The worklet leaves its output silent; captured audio is never played locally.
-    processor.connect(context.destination)
     await context.resume()
   } catch (error) {
     if (generation === captureGeneration) await stopAudioCapture()
@@ -197,27 +194,30 @@ export async function startAudioCapture(sessionId: string): Promise<AudioCapture
 
 export async function stopAudioCapture(): Promise<void> {
   generation++
-  const closingProcessor = processor
+  const closingProcessors = processors
   const closingContext = audioContext
-  processor = null
+  processors = []
   audioContext = null
   sourceNodes.forEach((sourceNode) => sourceNode.disconnect())
   sourceNodes = []
-  if (mixer) {
-    mixer.disconnect()
-    mixer = null
-  }
   mediaStreams.forEach((stream) => stream.getTracks().forEach((track) => track.stop()))
   mediaStreams = []
-  if (closingProcessor && closingContext?.state === 'running') {
-    await new Promise<void>((resolve) => {
-      acknowledgeFlush = resolve
-      closingProcessor.port.postMessage('flush')
-    })
-    acknowledgeFlush = null
+  if (closingProcessors.length && closingContext?.state === 'running') {
+    await Promise.all(
+      closingProcessors.map(
+        (processor) =>
+          new Promise<void>((resolve) => {
+            flushWaiters.set(processor, resolve)
+            processor.port.postMessage('flush')
+          })
+      )
+    )
+    closingProcessors.forEach((processor) => flushWaiters.delete(processor))
   }
-  closingProcessor?.disconnect()
-  closingProcessor?.port.close()
+  closingProcessors.forEach((processor) => {
+    processor.disconnect()
+    processor.port.close()
+  })
   if (closingContext && closingContext.state !== 'closed') await closingContext.close()
   useTranscriptionStore.getState().setAudioLevel(0)
 }

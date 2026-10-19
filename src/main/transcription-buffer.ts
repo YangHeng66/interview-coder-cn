@@ -57,6 +57,13 @@ export class TranscriptionBuffer {
     return text
   }
 
+  consumeConfirmed(): string {
+    const { confirmedText } = this.getSegments()
+    this.finalizedText = ''
+    this.consumedPartialLength = Math.max(this.consumedPartialLength, this.confirmedPartialLength)
+    return confirmedText
+  }
+
   clear(): void {
     this.finalizedText = ''
     this.consumedPartialLength = this.currentPartial.length

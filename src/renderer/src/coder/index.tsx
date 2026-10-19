@@ -16,7 +16,7 @@ import { useTranscriptionStore } from '@/lib/store/transcription'
 import { useSolutionStore } from '@/lib/store/solution'
 import { useChatStore } from '@/lib/store/chat'
 import { useKnowledgeStore } from '@/lib/store/knowledge'
-import { startAudioCapture, stopAudioCapture } from '@/lib/audio-capture'
+import { startAudioCapture, stopAudioCapture, type AudioCaptureSource } from '@/lib/audio-capture'
 
 import { AppHeader } from './AppHeader'
 import { AppContent } from './AppContent'
@@ -101,6 +101,11 @@ export default function CoderPage() {
       return
     }
 
+    // Mixed capture recognizes the interviewer (system audio) and me (microphone) separately
+    const channels: AudioCaptureSource[] | undefined =
+      useSettingsStore.getState().transcriptionAudioSource === 'mixed'
+        ? ['system', 'microphone']
+        : undefined
     const attempt = ++speechAttempt.current
     const sessionId = crypto.randomUUID()
     speechSession.current = sessionId
@@ -111,10 +116,14 @@ export default function CoderPage() {
     try {
       await window.api.updateAppState({ transcriptionPaused: false })
       if (attempt !== speechAttempt.current) return
-      await window.api.startTranscription(transcriptionConfig, sessionId)
+      await window.api.startTranscription(transcriptionConfig, sessionId, channels)
       if (attempt !== speechAttempt.current) return
       const captureResult = await startAudioCapture(sessionId)
       if (attempt !== speechAttempt.current) return
+      if (channels && captureResult.activeSources.length < channels.length) {
+        await window.api.setTranscriptionChannels(sessionId, captureResult.activeSources)
+        if (attempt !== speechAttempt.current) return
+      }
       showModeError(null)
       captureResult.warnings.forEach((warning) => toast.warning(warning))
     } catch (error) {

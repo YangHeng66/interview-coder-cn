@@ -176,6 +176,23 @@ export type TranscriptionProvider = 'dashscope' | 'volcengine'
 
 export type TranscriptionAudioSource = 'system' | 'microphone' | 'mixed'
 
+/** Audio channel of one recognition connection; mixed capture opens one connection per channel */
+export type TranscriptionChannel = 'system' | 'microphone'
+
+export type TranscriptionSpeaker = 'interviewer' | 'me'
+
+export const TRANSCRIPTION_SPEAKER_LABELS: Record<TranscriptionSpeaker, string> = {
+  interviewer: '面试官',
+  me: '我'
+}
+
+/** `speaker` is null when only one audio source is captured */
+export type TranscriptionLine = {
+  speaker: TranscriptionSpeaker | null
+  confirmedText: string
+  partialText: string
+}
+
 export type TranscriptionStatus =
   | 'idle'
   | 'connecting'
@@ -187,8 +204,7 @@ export type TranscriptionStatusEvent = { sessionId: string; status: Transcriptio
 export type TranscriptionTextEvent = {
   text: string
   isPartial: boolean
-  confirmedText: string
-  partialText: string
+  lines: TranscriptionLine[]
 }
 
 export const DEFAULT_DASHSCOPE_ASR_MODEL = 'fun-asr-realtime'
@@ -552,7 +568,7 @@ export const DEFAULT_REVIEW_REPORT_PROMPT = `你是一名资深技术面试复�
 ## 下一轮准备重点
 给出 3-5 条最优先的准备建议。
 
-要求：只依据材料作答；材料中的 AI 参考回答仅供对照，不代表候选人的回答。`
+要求：只依据材料作答；语音记录中以「面试官：」「我：」开头的行分别是面试官和候选人的发言；材料中的 AI 参考回答仅供对照，不代表候选人的回答。`
 
 export type ChatEvent =
   | {

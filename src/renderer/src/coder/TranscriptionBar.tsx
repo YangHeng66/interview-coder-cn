@@ -4,6 +4,38 @@ import { ArrowDown, Mic, Pause, Play, Send, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTranscriptionStore } from '@/lib/store/transcription'
 import appConfig from '../../../../app.config.json'
+import {
+  TRANSCRIPTION_SPEAKER_LABELS,
+  type TranscriptionLine,
+  type TranscriptionSpeaker
+} from '../../../preload/contracts'
+
+const speakerColors: Record<TranscriptionSpeaker, string> = {
+  interviewer: 'text-sky-300',
+  me: 'text-emerald-300'
+}
+
+function TranscriptLines({ lines }: { lines: TranscriptionLine[] }) {
+  if (!lines.some((line) => line.speaker)) {
+    return lines.map((line, index) => (
+      <span key={index}>
+        <span>{line.confirmedText}</span>
+        <span className="text-amber-100/70">{line.partialText}</span>
+      </span>
+    ))
+  }
+  return lines.map((line, index) => (
+    <div key={index}>
+      {line.speaker && (
+        <span className={`font-medium ${speakerColors[line.speaker]}`}>
+          {TRANSCRIPTION_SPEAKER_LABELS[line.speaker]}：
+        </span>
+      )}
+      <span>{line.confirmedText}</span>
+      <span className="text-amber-100/70">{line.partialText}</span>
+    </div>
+  ))
+}
 
 const labels = {
   idle: '待发送',
@@ -36,16 +68,15 @@ export function TranscriptionBar({
   onPause: () => void
   onResume: () => void
 }) {
-  const { isTranscribing, transcriptionText, status, confirmedText, partialText } =
-    useTranscriptionStore(
-      useShallow((s) => ({
-        isTranscribing: s.isTranscribing,
-        transcriptionText: s.transcriptionText,
-        status: s.status,
-        confirmedText: s.confirmedText,
-        partialText: s.partialText
-      }))
-    )
+  const { isTranscribing, transcriptionText, status, lines } = useTranscriptionStore(
+    useShallow((s) => ({
+      isTranscribing: s.isTranscribing,
+      transcriptionText: s.transcriptionText,
+      status: s.status,
+      lines: s.lines
+    }))
+  )
+  const hasPartial = lines.some((line) => line.partialText)
   const scrollRef = useRef<HTMLDivElement>(null)
   const following = useRef(true)
   const [detached, setDetached] = useState(false)
@@ -75,8 +106,8 @@ export function TranscriptionBar({
           {finishing ? labels.finishing : isPaused ? '已暂停' : labels[status]}
         </span>
         <AudioLevel />
-        {partialText && <span className="text-amber-200/80">识别中</span>}
-        {!partialText && transcriptionText && <span className="text-emerald-200/80">已确认</span>}
+        {hasPartial && <span className="text-amber-200/80">识别中</span>}
+        {!hasPartial && transcriptionText && <span className="text-emerald-200/80">已确认</span>}
         <div className="ml-auto flex shrink-0 gap-0.5">
           {detached && (
             <Button
@@ -134,8 +165,7 @@ export function TranscriptionBar({
           setDetached(!following.current)
         }}
       >
-        <span>{confirmedText}</span>
-        <span className="text-amber-100/70">{partialText}</span>
+        <TranscriptLines lines={lines} />
         {!transcriptionText && (
           <span className="text-muted-foreground">
             {isPaused ? '语音识别已暂停' : '等待语音输入...'}

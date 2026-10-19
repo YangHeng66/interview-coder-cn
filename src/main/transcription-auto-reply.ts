@@ -1,10 +1,19 @@
 import appConfig from '../../app.config.json'
+import type { ConversationPersona, TranscriptionSpeaker } from '../preload/contracts'
 
 export const AUTO_REPLY_MERGE_DELAY_MS = appConfig.transcription.autoReplyMergeMs
 export const AUTO_REPLY_MAX_BATCHES = appConfig.transcription.autoReplyMaxBatches
 export const AUTO_REPLY_MAX_CHARACTERS = appConfig.transcription.autoReplyMaxCharacters
 
 type Timer = ReturnType<typeof setTimeout>
+
+/** My speech answers the interviewer, except in a mock interview where my answers are the input */
+export function shouldTriggerAutoReply(
+  speaker: TranscriptionSpeaker | null | undefined,
+  persona: ConversationPersona | undefined
+): boolean {
+  return speaker !== 'me' || persona === 'mock-interview'
+}
 
 /**
  * Collects finalized speech into short conversational batches. The queue does

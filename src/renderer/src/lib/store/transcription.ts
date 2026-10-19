@@ -1,5 +1,9 @@
 import { create } from 'zustand'
-import type { TranscriptionStatus, TranscriptionTextEvent } from '../../../../preload/contracts'
+import type {
+  TranscriptionLine,
+  TranscriptionStatus,
+  TranscriptionTextEvent
+} from '../../../../preload/contracts'
 
 interface TranscriptionState {
   isTranscribing: boolean
@@ -7,8 +11,7 @@ interface TranscriptionState {
   transcriptionText: string
   errorMessage: string | null
   status: TranscriptionStatus
-  confirmedText: string
-  partialText: string
+  lines: TranscriptionLine[]
   audioLevel: number
 }
 
@@ -30,8 +33,7 @@ const defaultState: TranscriptionState = {
   transcriptionText: '',
   errorMessage: null,
   status: 'idle',
-  confirmedText: '',
-  partialText: '',
+  lines: [],
   audioLevel: 0
 }
 
@@ -40,16 +42,14 @@ export const useTranscriptionStore = create<TranscriptionStore>()((set) => ({
   setIsTranscribing: (v) => set({ isTranscribing: v }),
   setIsPaused: (v) => set({ isPaused: v }),
   setTranscriptionText: (text) =>
-    set({ transcriptionText: text, confirmedText: text, partialText: '' }),
+    set({
+      transcriptionText: text,
+      lines: text ? [{ speaker: null, confirmedText: text, partialText: '' }] : []
+    }),
   setStatus: (status) => set({ status }),
   setAudioLevel: (audioLevel) => set({ audioLevel }),
-  updateTranscript: (event) =>
-    set({
-      transcriptionText: event.text,
-      confirmedText: event.confirmedText,
-      partialText: event.partialText
-    }),
-  clearText: () => set({ transcriptionText: '', confirmedText: '', partialText: '' }),
+  updateTranscript: (event) => set({ transcriptionText: event.text, lines: event.lines }),
+  clearText: () => set({ transcriptionText: '', lines: [] }),
   setError: (msg) => set({ errorMessage: msg }),
   resetState: () => set(defaultState)
 }))

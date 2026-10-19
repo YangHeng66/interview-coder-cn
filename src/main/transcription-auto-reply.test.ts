@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AUTO_REPLY_MAX_BATCHES, TranscriptionAutoReplyQueue } from './transcription-auto-reply'
+import {
+  AUTO_REPLY_MAX_BATCHES,
+  shouldTriggerAutoReply,
+  TranscriptionAutoReplyQueue
+} from './transcription-auto-reply'
 
 describe('TranscriptionAutoReplyQueue', () => {
   it('merges speech received within the debounce window', () => {
@@ -61,5 +65,31 @@ describe('TranscriptionAutoReplyQueue', () => {
     expect(onReady).not.toHaveBeenCalled()
     expect(queue.peek()).toBeNull()
     vi.useRealTimers()
+  })
+})
+
+describe('shouldTriggerAutoReply', () => {
+  it('skips my own speech in a regular conversation', () => {
+    expect(shouldTriggerAutoReply('me', undefined)).toBe(false)
+  })
+
+  it('skips my own speech in a review conversation', () => {
+    expect(shouldTriggerAutoReply('me', 'review')).toBe(false)
+  })
+
+  it('replies to my own speech in a mock interview', () => {
+    expect(shouldTriggerAutoReply('me', 'mock-interview')).toBe(true)
+  })
+
+  it('replies to the interviewer in every conversation type', () => {
+    expect(shouldTriggerAutoReply('interviewer', undefined)).toBe(true)
+    expect(shouldTriggerAutoReply('interviewer', 'review')).toBe(true)
+    expect(shouldTriggerAutoReply('interviewer', 'mock-interview')).toBe(true)
+  })
+
+  it('replies when the speaker is unknown', () => {
+    expect(shouldTriggerAutoReply(null, undefined)).toBe(true)
+    expect(shouldTriggerAutoReply(undefined, undefined)).toBe(true)
+    expect(shouldTriggerAutoReply(null, 'mock-interview')).toBe(true)
   })
 })

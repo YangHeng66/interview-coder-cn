@@ -44,4 +44,39 @@ describe('TranscriptionBuffer', () => {
     expect(buffer.getText()).toBe('')
     expect(buffer.consume()).toBe('')
   })
+
+  describe('consumeConfirmed', () => {
+    it('consumes the confirmed part of a partial and keeps the unconfirmed tail', () => {
+      const buffer = new TranscriptionBuffer()
+
+      buffer.updatePartial('你好')
+      buffer.confirmPartial()
+      buffer.updatePartial('你好，请')
+
+      expect(buffer.consumeConfirmed()).toBe('你好')
+      expect(buffer.getText()).toBe('，请')
+
+      buffer.finishSentence('你好，请介绍一下。')
+      expect(buffer.getText()).toBe('，请介绍一下。')
+    })
+
+    it('consumes finalized text and keeps an unconfirmed partial', () => {
+      const buffer = new TranscriptionBuffer()
+
+      buffer.finishSentence('第一句。')
+      buffer.updatePartial('第二')
+
+      expect(buffer.consumeConfirmed()).toBe('第一句。')
+      expect(buffer.getText()).toBe('第二')
+    })
+
+    it('returns an empty string and leaves the text untouched when nothing is confirmed', () => {
+      const buffer = new TranscriptionBuffer()
+
+      buffer.updatePartial('还没确认')
+
+      expect(buffer.consumeConfirmed()).toBe('')
+      expect(buffer.getText()).toBe('还没确认')
+    })
+  })
 })

@@ -19,6 +19,7 @@ import type {
   KnowledgeResult,
   KnowledgeSnapshot,
   SecretStorageStatus,
+  TranscriptionChannel,
   TranscriptionConfig,
   TranscriptionTextEvent,
   TranscriptionStatusEvent
@@ -370,11 +371,19 @@ const api = {
   // Select screenshot save directory
 
   // Transcription
-  startTranscription: (config: TranscriptionConfig, sessionId: string) =>
-    ipcRenderer.invoke('start-transcription', config, sessionId),
+  startTranscription: (
+    config: TranscriptionConfig,
+    sessionId: string,
+    channels?: TranscriptionChannel[]
+  ) => ipcRenderer.invoke('start-transcription', config, sessionId, channels),
   stopTranscription: () => ipcRenderer.invoke('stop-transcription'),
-  sendTranscriptionAudioChunk: (sessionId: string, chunk: ArrayBuffer) =>
-    ipcRenderer.send('transcription-audio-chunk', sessionId, chunk),
+  setTranscriptionChannels: (sessionId: string, channels: TranscriptionChannel[]) =>
+    ipcRenderer.invoke('set-transcription-channels', sessionId, channels),
+  sendTranscriptionAudioChunk: (
+    sessionId: string,
+    chunk: ArrayBuffer,
+    channel: TranscriptionChannel
+  ) => ipcRenderer.send('transcription-audio-chunk', sessionId, chunk, channel),
   getTranscriptionText: () => ipcRenderer.invoke('get-transcription-text') as Promise<string>,
 
   onToggleTranscription: (callback: () => void) => {
