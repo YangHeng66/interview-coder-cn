@@ -87,7 +87,7 @@ async function captureScreenshot(
   saveScreenshotToDisk(screenshotData)
   const transcriptionText = getTranscriptionText()
   if (transcriptionText) {
-    clearTranscriptionText()
+    clearTranscriptionText('screenshot')
     mainWindow.webContents.send('transcription-cleared')
   }
   return { screenshotData, transcriptionText }

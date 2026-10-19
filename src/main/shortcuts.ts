@@ -72,7 +72,7 @@ const callbacks: Record<string, () => void> = {
   clearTranscription: () => {
     const mainWindow = global.mainWindow
     if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage) return
-    clearTranscriptionText()
+    clearTranscriptionText('manual')
     mainWindow.webContents.send('transcription-cleared')
   },
   sendTranscriptionToChat: () => {

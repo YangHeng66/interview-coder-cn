@@ -10,6 +10,7 @@ import {
   type TranscriptionStatus
 } from '../preload/contracts'
 import { SpeakerTranscript, speakerForChannel } from './transcription-speakers'
+import { logTimeline } from './transcription-timeline'
 import appConfig from '../../app.config.json'
 
 const config = appConfig.transcription
@@ -154,6 +155,7 @@ function schedulePartialFinalization(session: TranscriptionSession): void {
     ) {
       return
     }
+    logTimeline('silence-final', { channel: session.channel, text: snapshot })
     publishTranscription(speaker, false, 'silence')
   }, PARTIAL_IDLE_TIMEOUT_MS)
 }
@@ -170,6 +172,7 @@ function publishListeningIfReady(run: TranscriptionRun): void {
 
 function markReady(session: TranscriptionSession): void {
   session.taskStarted = true
+  logTimeline('session-ready', { channel: session.channel })
   if (session.connectionTimer) clearTimeout(session.connectionTimer)
   session.connectionTimer = null
   publishListeningIfReady(session.run)
@@ -210,6 +213,11 @@ function finishSession(session: TranscriptionSession, notify = true): void {
   if (session.connectionTimer) clearTimeout(session.connectionTimer)
   session.startupAudio = []
   const speaker = speakerOf(session)
+  logTimeline('session-finish', {
+    channel: session.channel,
+    graceful: session.finishing,
+    pending: transcript.getSpeakerText(speaker)
+  })
   transcript.finalizePartial(speaker)
   if (session.finishing && getTranscriptionText().trim()) {
     publishTranscription(speaker, false, 'stopped')
@@ -238,6 +246,7 @@ function failSession(session: TranscriptionSession, message: string): void {
   console.error(
     `[Transcription:${session.config.provider}${session.channel ? `:${session.channel}` : ''}] ${message}`
   )
+  logTimeline('session-error', { channel: session.channel, message })
   sendToRenderer('transcription-error', `${prefix}${message}`)
   publishStatus(run, 'error')
   finishRun(run)
@@ -371,6 +380,14 @@ function attachDashScopeHandlers(session: TranscriptionSession): void {
         const text = typeof sentence.text === 'string' ? sentence.text : ''
         const sentenceEnd = sentence.sentence_end === true
         const speaker = speakerOf(session)
+        logTimeline('asr', {
+          channel: session.channel,
+          final: sentenceEnd,
+          sentenceId: sentence.sentence_id,
+          begin: sentence.begin_time,
+          end: sentence.end_time,
+          text
+        })
         if (sentenceEnd) {
           clearPartialTimer(session)
           transcript.finishSentence(speaker, text)
@@ -526,6 +543,15 @@ function handleVolcengineMessage(session: TranscriptionSession, data: WebSocket.
           typeof lastUtterance === 'object' &&
           (lastUtterance as Record<string, unknown>).definite === true
         const isPartial = !frame.isFinal && !lastIsDefinite
+        // result.text is cumulative, so only the tail is logged to keep the file linear in size
+        logTimeline('asr', {
+          channel: session.channel,
+          final: !isPartial,
+          frameFinal: frame.isFinal,
+          textLength: resultRecord.text.length,
+          utteranceCount: utterances.length,
+          tail: utterances.slice(-2).map(summarizeVolcengineUtterance)
+        })
         if (isPartial) {
           publishTranscription(speaker, true)
           schedulePartialFinalization(session)
@@ -539,6 +565,17 @@ function handleVolcengineMessage(session: TranscriptionSession, data: WebSocket.
 
   if (frame.isFinal && session.finishing) {
     finishSession(session)
+  }
+}
+
+function summarizeVolcengineUtterance(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object') return {}
+  const utterance = value as Record<string, unknown>
+  return {
+    text: utterance.text,
+    begin: utterance.start_time,
+    end: utterance.end_time,
+    definite: utterance.definite === true
   }
 }
 
@@ -632,6 +669,12 @@ function startTranscription(value: unknown, runId: string, channels: unknown): v
   }
   activeRun = run
   isTranscribing = true
+  logTimeline('run-start', {
+    runId,
+    provider: config.provider,
+    model: config.model,
+    channels: sessionChannels
+  })
   publishStatus(run, 'connecting')
   sessionChannels.forEach((channel, index) => {
     // Each connection needs its own task id; the first reuses the renderer's id
@@ -678,6 +721,7 @@ function stopTranscription(): Promise<void> {
     () => undefined
   )
   isTranscribing = false
+  logTimeline('run-stop', { runId: run.id })
   publishStatus(run, 'finishing')
   notifyStopped(run)
   for (const session of [...run.sessions]) finishSessionGracefully(session)
@@ -692,6 +736,7 @@ function setTranscriptionChannels(runId: string, channels: unknown): void {
     (session) => session.channel && channels.includes(session.channel)
   )
   if (remaining.length !== 1) return
+  logTimeline('channels-changed', { remaining: remaining[0].channel })
 
   for (const session of [...run.sessions]) {
     if (session !== remaining[0]) finishSession(session, false)
@@ -744,6 +789,7 @@ export function getTranscriptionText(): string {
 
 export function consumeTranscriptionText(): string {
   const text = transcript.consume()
+  logTimeline('consume', { mode: 'all', text })
   sendTranscriptText(false)
   return text
 }
@@ -751,11 +797,14 @@ export function consumeTranscriptionText(): string {
 /** Takes confirmed text of every speaker and leaves unconfirmed partials in place */
 export function consumeConfirmedTranscriptionText(): string {
   const text = transcript.consumeConfirmed()
+  logTimeline('consume', { mode: 'confirmed', text, remaining: transcript.getText() })
   sendTranscriptText(false)
   return text
 }
 
-export function clearTranscriptionText(): void {
+/** reason only labels the timeline log: a screenshot takes the text, a manual clear drops it */
+export function clearTranscriptionText(reason: 'screenshot' | 'manual'): void {
+  logTimeline('consume', { mode: reason, text: transcript.getText() })
   transcript.clear()
 }
 
@@ -786,5 +835,5 @@ ipcMain.handle('get-transcription-text', () => {
 })
 
 ipcMain.handle('clear-transcription-text', () => {
-  clearTranscriptionText()
+  clearTranscriptionText('manual')
 })

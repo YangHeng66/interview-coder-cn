@@ -13,6 +13,7 @@ import {
 } from '../transcription'
 import type { TranscriptionEvent } from '../transcription'
 import { shouldTriggerAutoReply, TranscriptionAutoReplyQueue } from '../transcription-auto-reply'
+import { logTimeline } from '../transcription-timeline'
 import type {
   AssistantMode,
   ChatDocument,
@@ -148,21 +149,28 @@ function notifyAutoReplyIssue(message: string): void {
 }
 
 function handleTranscriptionEvent(event: TranscriptionEvent): void {
-  if (isConversationTransitioning()) return
   if (event.isPartial) return
-  if (!settings.transcriptionAutoReply || !state.inCoderPage) return
-  if (state.assistantMode !== 'chat') return
-  if (state.transcriptionPaused) return
-  if (!shouldTriggerAutoReply(event.speaker, activeConversation('chat').persona)) return
+  const skip = (why: string) =>
+    logTimeline('auto-reply-skip', { speaker: event.speaker, reason: event.reason, why })
+  if (isConversationTransitioning()) return skip('transitioning')
+  if (!settings.transcriptionAutoReply) return skip('disabled')
+  if (!state.inCoderPage) return skip('not-coder-page')
+  if (state.assistantMode !== 'chat') return skip('vision-mode')
+  if (state.transcriptionPaused) return skip('paused')
+  if (!shouldTriggerAutoReply(event.speaker, activeConversation('chat').persona)) {
+    return skip('own-speech')
+  }
 
   if (!isChatConfigured()) {
+    skip('chat-unconfigured')
     notifyAutoReplyIssue('请先在设置中配置文字对话模型，语音自动回答暂未发送')
     return
   }
 
   const pendingText = getTranscriptionText().trim()
-  if (!pendingText) return
+  if (!pendingText) return skip('empty')
   if (!autoReplyQueue.canAccept(pendingText)) {
+    skip('queue-full')
     notifyAutoReplyIssue('语音自动回答队列已满，请先停止或清空当前对话')
     return
   }
@@ -177,7 +185,15 @@ function handleTranscriptionEvent(event: TranscriptionEvent): void {
     // Voice questions should be able to take over an ongoing chat response.
     // Use the same user-stop path so the interrupted assistant message is
     // closed in the renderer before the queued question starts.
-    const shouldInterrupt = getCurrentStream()?.kind === 'chat'
+    const currentStream = getCurrentStream()
+    const shouldInterrupt = currentStream?.kind === 'chat'
+    logTimeline('auto-reply-enqueue', {
+      speaker: event.speaker,
+      reason: event.reason,
+      chars: consumedText.length,
+      interrupts: shouldInterrupt ? currentStream.requestId : null,
+      pending: autoReplyQueue.pendingCount
+    })
     if (shouldInterrupt) {
       interruptChatStream(false)
       autoReplyQueue.flush()
@@ -249,6 +265,7 @@ async function runChatRequest(
       )
       for await (const chunk of chatStream) {
         if (streamContext.controller.signal.aborted) break
+        if (!assistantResponse) logTimeline('chat-first-token', { requestId })
         assistantResponse += chunk
         sendChatEvent({
           type: 'assistant-delta',
@@ -304,6 +321,18 @@ async function runChatRequest(
     })
   }
 
+  logTimeline('chat-end', {
+    requestId,
+    outcome: streamContext.controller.signal.aborted
+      ? 'stopped'
+      : streamError
+        ? 'error'
+        : assistantResponse
+          ? 'complete'
+          : 'empty',
+    stopReason: streamContext.reason,
+    chars: assistantResponse.length
+  })
   releaseStream(streamContext)
 }
 
@@ -327,6 +356,7 @@ function acceptChatRequest(
     assistantMessageId
   }
 
+  logTimeline('chat-request', { requestId, source, text })
   setCurrentStream(streamContext)
   setAssistantMode('chat')
   sendChatEvent({

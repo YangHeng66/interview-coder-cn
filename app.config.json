@@ -88,7 +88,8 @@
     "autoReplyMaxCharacters": 20000,
     "volcengineEndWindowMs": 1000,
     "meterFloorDb": -60,
-    "scrollFollowThresholdPx": 24
+    "scrollFollowThresholdPx": 24,
+    "timelineLog": false
   },
   "modelThinkingRules": [
     {
