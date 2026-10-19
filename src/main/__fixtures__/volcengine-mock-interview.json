@@ -1,0 +1,2559 @@
+{
+  "source": "Volcengine bigmodel, single system-audio channel, scripted mock interview (TTS)",
+  "note": "Each frame lists only utterances that changed since the previous frame",
+  "frames": [
+    {
+      "t": 1792,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "1",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 2160,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 2465,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 2741,
+      "final": false,
+      "count": 1,
+      "changed": {}
+    },
+    {
+      "t": 2988,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 3896,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎参加",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 4127,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎参加今天",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 4314,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎参加今天的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 4638,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎参加今天的面试",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 7341,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎参加今天的面试先",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 7610,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎参加今天的面试。先简单",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 7843,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎参加今天的面试，先简单做个",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 8266,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎参加今天的面试，先简单做个自我",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 8533,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "嗯嗯那个，你好，欢迎参加今天的面试，先简单做个自我介绍",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 8868,
+      "final": false,
+      "count": 1,
+      "changed": {}
+    },
+    {
+      "t": 10283,
+      "final": false,
+      "count": 1,
+      "changed": {
+        "0": {
+          "text": "你好，欢迎参加今天的面试。先简单做个自我介绍吧。",
+          "definite": true
+        }
+      }
+    },
+    {
+      "t": 13142,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 13467,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 14325,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 14787,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 15072,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 15634,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 16380,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 16989,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 17240,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 17599,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 18248,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 18894,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 19609,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 19858,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 20144,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 20434,
+      "final": false,
+      "count": 2,
+      "changed": {}
+    },
+    {
+      "t": 20778,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 21140,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 21765,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 22041,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做电商",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 22839,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做电商中台",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 23011,
+      "final": false,
+      "count": 2,
+      "changed": {}
+    },
+    {
+      "t": 23678,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做电商中台负责",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 23979,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做电商中台，负责性能",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 24434,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做电商中台，负责性能优化",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 24945,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做电商中台，负责性能优化和组件",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 26012,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做电商中台，负责性能优化和组件建设",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 29407,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做电商中台，负责性能优化和组件建设。好的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 29757,
+      "final": false,
+      "count": 2,
+      "changed": {}
+    },
+    {
+      "t": 31158,
+      "final": false,
+      "count": 2,
+      "changed": {
+        "1": {
+          "text": "好的，我叫张三，有5年前端开发经验，主要使用 react 和 Vue，最近两年在做电商中台，负责性能优化和组件建设。好的，我们",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 31211,
+      "final": false,
+      "count": 3,
+      "changed": {
+        "1": {
+          "text": "好的。我叫张三，有5年前端开发经验，主要使用 React 和 Vue，最近两年在做电商中台，负责性能优化和组件库建设。好的，那",
+          "definite": true
+        },
+        "2": {
+          "text": "我们",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 31458,
+      "final": false,
+      "count": 3,
+      "changed": {
+        "2": {
+          "text": "我们聊",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 31625,
+      "final": false,
+      "count": 3,
+      "changed": {
+        "2": {
+          "text": "我们聊聊",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 32095,
+      "final": false,
+      "count": 3,
+      "changed": {
+        "2": {
+          "text": "我们聊聊前端性能",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 32319,
+      "final": false,
+      "count": 3,
+      "changed": {}
+    },
+    {
+      "t": 33321,
+      "final": false,
+      "count": 3,
+      "changed": {
+        "2": {
+          "text": "我们聊聊前端性能。",
+          "definite": true
+        }
+      }
+    },
+    {
+      "t": 35003,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 35342,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 35669,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 36128,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 36589,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 37011,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 37276,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 37555,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 37828,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 43394,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 43648,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 43988,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 44218,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 44574,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 45000,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 45266,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 45674,
+      "final": false,
+      "count": 4,
+      "changed": {}
+    },
+    {
+      "t": 45884,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 46208,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 47144,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 47442,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 47826,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽、高",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 48464,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽高位置",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 48728,
+      "final": false,
+      "count": 4,
+      "changed": {}
+    },
+    {
+      "t": 49352,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽高位置显示",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 49766,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽高位置显示隐藏",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 50058,
+      "final": false,
+      "count": 4,
+      "changed": {}
+    },
+    {
+      "t": 50978,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽高位置显示隐藏浏览器",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 51348,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽高位置显示隐藏浏览器需要",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 51946,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽高位置显示隐藏，浏览器需要重新",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 52558,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽高位置显示隐藏，浏览器需要重新计算",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 53024,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽高位置显示隐藏，浏览器需要重新计算布局",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 53243,
+      "final": false,
+      "count": 4,
+      "changed": {}
+    },
+    {
+      "t": 54338,
+      "final": false,
+      "count": 4,
+      "changed": {
+        "3": {
+          "text": "你说说浏览器的重绘和回流有什么区别？回流是指元素的几何属性发生变化，比如宽高、位置、显示隐藏，浏览器需要重新计算布局，带",
+          "definite": true
+        }
+      }
+    },
+    {
+      "t": 54642,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 54782,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 56046,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 56302,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 56703,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 57154,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 57484,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 57944,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色背景",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 58580,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 58980,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 59528,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 60192,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 60626,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 60858,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 61222,
+      "final": false,
+      "count": 5,
+      "changed": {}
+    },
+    {
+      "t": 62407,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 62590,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 63111,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 64339,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 64670,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 65005,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 65391,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 65984,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 66215,
+      "final": false,
+      "count": 5,
+      "changed": {}
+    },
+    {
+      "t": 66558,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 66993,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 67240,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 67681,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 67929,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 68187,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 68720,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发回流",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 68804,
+      "final": false,
+      "count": 5,
+      "changed": {}
+    },
+    {
+      "t": 70205,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发回流，常见",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 70835,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发回流，常见触发回",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 71111,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发回流，常见触发回流的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 71801,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发回流，常见触发回流的操作",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 72373,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发回流，常见触发回流的操作有读取",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 72991,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发回流。常见触发回流的操作有读取 offset",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 73393,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发回流。常见触发回流的操作有读取 offset with",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 73609,
+      "final": false,
+      "count": 5,
+      "changed": {}
+    },
+    {
+      "t": 74149,
+      "final": false,
+      "count": 5,
+      "changed": {
+        "4": {
+          "text": "价比较大，重惠是指只有颜色、背景这类外观变化不影响布局，只需要重新绘制回流一定会触发重绘，但重绘不一定触发回流。常见触发回流的操作有读取 offset with 修改",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 74493,
+      "final": false,
+      "count": 6,
+      "changed": {
+        "4": {
+          "text": "价比较大。重绘是指只有颜色、背景这类外观变化，不影响布局，只需要重新绘制。回流一定会触发重绘，但重绘不一定触发回流。常见触发回流的操作有读取 offset width。",
+          "definite": true
+        },
+        "5": {
+          "text": "修改",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 74782,
+      "final": false,
+      "count": 6,
+      "changed": {
+        "5": {
+          "text": "修改 d o",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 75084,
+      "final": false,
+      "count": 6,
+      "changed": {
+        "5": {
+          "text": "修改 DOM 结构",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 75391,
+      "final": false,
+      "count": 6,
+      "changed": {}
+    },
+    {
+      "t": 76151,
+      "final": false,
+      "count": 6,
+      "changed": {
+        "5": {
+          "text": "修改 DOM 结构改变",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 76363,
+      "final": false,
+      "count": 6,
+      "changed": {
+        "5": {
+          "text": "修改 DOM 结构，改变窗口",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 77053,
+      "final": false,
+      "count": 6,
+      "changed": {
+        "5": {
+          "text": "修改 DOM 结构，改变窗口大小",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 77348,
+      "final": false,
+      "count": 6,
+      "changed": {
+        "5": {
+          "text": "修改 DOM 结构，改变窗口大小等等",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 77609,
+      "final": false,
+      "count": 6,
+      "changed": {}
+    },
+    {
+      "t": 78213,
+      "final": false,
+      "count": 6,
+      "changed": {
+        "5": {
+          "text": "修改 DOM 结构，改变窗口大小等等，所以",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 78615,
+      "final": false,
+      "count": 6,
+      "changed": {}
+    },
+    {
+      "t": 79761,
+      "final": false,
+      "count": 6,
+      "changed": {
+        "5": {
+          "text": "修改 D O M 结构、改变窗口大小等等，所以",
+          "definite": true
+        }
+      }
+    },
+    {
+      "t": 80571,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 80863,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文好",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 81135,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文好，这个我",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 81493,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文，好，这个我了解",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 81883,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文，好，这个我了解了",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 83493,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文，好，这个我了解了，那你",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 83552,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文，好，这个我了解了，那你说说",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 83749,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文，好，这个我了解了，那你说说具体",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 84355,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文，好，这个我了解了，那你说说具体怎么",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 84706,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文，好，这个我了解了，那你说说具体怎么减少",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 85087,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "文，好，这个我了解了，那你说说具体怎么减少回流",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 85320,
+      "final": false,
+      "count": 7,
+      "changed": {}
+    },
+    {
+      "t": 86203,
+      "final": false,
+      "count": 7,
+      "changed": {
+        "6": {
+          "text": "嗯，好，这个我了解了。那你说说具体怎么减少回流？",
+          "definite": true
+        }
+      }
+    },
+    {
+      "t": 93282,
+      "final": false,
+      "count": 8,
+      "changed": {
+        "7": {
+          "text": "对",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 94283,
+      "final": false,
+      "count": 8,
+      "changed": {
+        "7": {
+          "text": "对",
+          "definite": true
+        }
+      }
+    },
+    {
+      "t": 96938,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 97158,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 98583,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 98834,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题不三的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 99216,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题不三的响应是",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 99518,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题不三的响应是原理",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 99880,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题不三的响应是原理和",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 100226,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，BO3的响应式原理和 Bo",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 100477,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，BO3的响应式原理和 BO2有",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 100768,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，BO3的响应式原理和 BO2有什么",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 101077,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，BO3的响应式原理和 BO2有什么不同",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 102720,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，BO3的响应式原理和 BO2有什么不同？proxy",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 103108,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，BO3的响应式原理和 BO2有什么不同？proxy 相比",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 103626,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 104295,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define property",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 104691,
+      "final": false,
+      "count": 9,
+      "changed": {}
+    },
+    {
+      "t": 104943,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 110740,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 111224,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 111622,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 111918,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 112160,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 113340,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题，假设",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 113566,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题，假设你",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 113856,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题，假设你负责一",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 114334,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题，假设你负责一个",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 114588,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题，假设你负责一个电商",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 114896,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题，假设你负责一个电商大",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 115176,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题，假设你负责一个电商大促的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 115508,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题，假设你负责一个电商大促的活动",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 115874,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，不三的响应是原理和不二有什么不同？proxy 相比 define，property 好在哪里？最后一道场景题，假设你负责一个电商大促的活动页面",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 116934,
+      "final": false,
+      "count": 9,
+      "changed": {
+        "8": {
+          "text": "下一个问题，Vue 3的响应式原理和 Vue 2有什么不同？Proxy 相比 defineProperty 好在哪里？最后一道场景题，假设你负责一个电商大促的活动页面，首",
+          "definite": true
+        }
+      }
+    },
+    {
+      "t": 117365,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 117571,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 117974,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 118096,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 118764,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 119056,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 119325,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 119696,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 120419,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 120998,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 121578,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 121956,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 122288,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 122564,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 122862,
+      "final": false,
+      "count": 10,
+      "changed": {}
+    },
+    {
+      "t": 123658,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮大促",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 123907,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 124264,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 124469,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 124833,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 125205,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 125867,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 126162,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 126589,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户，同时",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 126879,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 127073,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 127312,
+      "final": false,
+      "count": 10,
+      "changed": {}
+    },
+    {
+      "t": 127953,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 128345,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 128676,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口，压力很大",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 129407,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口，压力很大，页面",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 129657,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口，压力很大，页面也",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 130078,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口，压力很大，页面也容易",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 130293,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口，压力很大，页面也容易卡顿",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 130518,
+      "final": false,
+      "count": 10,
+      "changed": {}
+    },
+    {
+      "t": 130883,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口，压力很大，页面也容易卡顿。请",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 131224,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿，请你",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 131513,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿，请你从",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 131907,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿，请你从加载",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 132185,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿，请你从加载性能",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 132747,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿，请你从加载性能渲染",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 133136,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿，请你从加载性能、渲染性能",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 133795,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 134127,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和接口",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 134347,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和接口容",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 134828,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和接口容错三",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 135020,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和接口容错三个方面",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 135973,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和接口容错三个方面设计",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 136438,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和接口容错三个方面设计一个",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 136901,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和接口容错三个方面设计一个完整",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 137235,
+      "final": false,
+      "count": 10,
+      "changed": {
+        "9": {
+          "text": "平有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮，大促开始的瞬间会有几十万用户同时进入页面接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和接口容错三个方面设计一个完整的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 137345,
+      "final": false,
+      "count": 11,
+      "changed": {
+        "9": {
+          "text": "屏有大量商品图片和实时变化的价格，同时还有倒计时和抢购按钮。大促开始的瞬间会有几十万用户同时进入页面，接口压力很大，页面也容易卡顿。请你从加载性能、渲染性能和接口容错三个方面设计一个",
+          "definite": true
+        },
+        "10": {
+          "text": "完整的",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 137468,
+      "final": false,
+      "count": 11,
+      "changed": {
+        "10": {
+          "text": "完整的优化",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 137789,
+      "final": false,
+      "count": 11,
+      "changed": {
+        "10": {
+          "text": "完整的优化方案",
+          "definite": false
+        }
+      }
+    },
+    {
+      "t": 141663,
+      "final": false,
+      "count": 11,
+      "changed": {
+        "10": {
+          "text": "完整的优化方案。",
+          "definite": true
+        }
+      }
+    }
+  ]
+}

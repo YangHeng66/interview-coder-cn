@@ -11,6 +11,7 @@ import {
 } from '../preload/contracts'
 import { SpeakerTranscript, speakerForChannel } from './transcription-speakers'
 import { logTimeline } from './transcription-timeline'
+import { parseVolcengineUtterances, VolcengineUtteranceTracker } from './transcription-volcengine'
 import appConfig from '../../app.config.json'
 
 const config = appConfig.transcription
@@ -43,6 +44,8 @@ type TranscriptionSession = {
   startupAudio: Buffer[]
   startupBytes: number
   connectionTimer: NodeJS.Timeout | null
+  /** Volcengine only: which utterances of the cumulative result are already finished */
+  utterances: VolcengineUtteranceTracker
   completion: Promise<void>
   complete: () => void
 }
@@ -534,30 +537,32 @@ function handleVolcengineMessage(session: TranscriptionSession, data: WebSocket.
     if (result && typeof result === 'object') {
       const resultRecord = result as Record<string, unknown>
       if (typeof resultRecord.text === 'string') {
-        const speaker = speakerOf(session)
-        transcript.updatePartial(speaker, resultRecord.text)
-        const utterances = Array.isArray(resultRecord.utterances) ? resultRecord.utterances : []
-        const lastUtterance = utterances.at(-1)
-        const lastIsDefinite =
-          !!lastUtterance &&
-          typeof lastUtterance === 'object' &&
-          (lastUtterance as Record<string, unknown>).definite === true
-        const isPartial = !frame.isFinal && !lastIsDefinite
+        const rawUtterances = Array.isArray(resultRecord.utterances) ? resultRecord.utterances : []
+        const parsed = parseVolcengineUtterances(rawUtterances)
+        // show_utterances is requested; without it the cumulative text is one open utterance
+        const utterances = parsed.length ? parsed : [{ text: resultRecord.text, definite: false }]
+        const { finished, partial } = session.utterances.update(utterances, frame.isFinal)
         // result.text is cumulative, so only the tail is logged to keep the file linear in size
         logTimeline('asr', {
           channel: session.channel,
-          final: !isPartial,
+          final: finished.length > 0,
           frameFinal: frame.isFinal,
           textLength: resultRecord.text.length,
-          utteranceCount: utterances.length,
-          tail: utterances.slice(-2).map(summarizeVolcengineUtterance)
+          utteranceCount: rawUtterances.length,
+          tail: rawUtterances.slice(-2).map(summarizeVolcengineUtterance)
         })
-        if (isPartial) {
+
+        const speaker = speakerOf(session)
+        if (finished.length) {
+          clearPartialTimer(session)
+          // One call: the partial these came from may already span several of them
+          transcript.finishSentence(speaker, finished.join(''))
+          publishTranscription(speaker, false, 'provider')
+        }
+        if (partial) {
+          transcript.updatePartial(speaker, partial)
           publishTranscription(speaker, true)
           schedulePartialFinalization(session)
-        } else {
-          clearPartialTimer(session)
-          publishTranscription(speaker, false, 'provider')
         }
       }
     }
@@ -637,6 +642,7 @@ function createSession(
     startupAudio: [],
     startupBytes: 0,
     connectionTimer: null,
+    utterances: new VolcengineUtteranceTracker(),
     completion,
     complete
   }
