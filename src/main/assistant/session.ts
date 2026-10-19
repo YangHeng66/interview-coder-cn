@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import {
   activeConversation,
   activateConversation,
-  deleteConversation,
+  deleteConversations,
   exportConversation,
   flushConversations,
   getConversationView,
@@ -112,13 +112,14 @@ ipcMain.handle('renameConversation', async (_event, id: string, title: string) =
   await renameConversation(id, title)
   return listConversations()
 })
-ipcMain.handle('deleteConversation', (_event, id: string) =>
+const removeConversations = (ids: string[]) =>
   transitionConversation(async () => {
-    await deleteConversation(id)
+    await deleteConversations(ids)
     restoreConversationModels()
     return { screenshot: getConversationView('screenshot'), chat: getConversationView('chat') }
   })
-)
+ipcMain.handle('deleteConversation', (_event, id: string) => removeConversations([id]))
+ipcMain.handle('deleteConversations', (_event, ids: string[]) => removeConversations(ids))
 ipcMain.handle('exportConversation', (_event, id: string) => exportConversation(id))
 
 ipcMain.handle('activateKnowledgeProfile', async (_event, profileId: string | null) => {

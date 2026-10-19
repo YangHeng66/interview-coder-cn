@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { mkdir, readFile, writeFile, rename, unlink, rm } from 'node:fs/promises'
+import { mkdir, readFile, writeFile, rename, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { ModelMessage } from 'ai'
@@ -14,6 +14,7 @@ import {
   type KnowledgeContextUsed
 } from '../preload/contracts'
 import appConfig from '../../app.config.json'
+import { planConversationDeletion } from './conversation-deletion'
 
 export type Conversation = ConversationView & { modelMessages: ModelMessage[] }
 type StoredConversation = Conversation & { schemaVersion: 2 }
@@ -329,16 +330,25 @@ export async function renameConversation(id: string, title: string) {
   await flushConversations()
 }
 
-export async function deleteConversation(id: string) {
+export async function deleteConversations(ids: string[]) {
+  const { deleted, kept, replacedModes } = planConversationDeletion(manifest, ids)
+  if (!deleted.length) return
+  // Drop unsaved changes too, otherwise a later flush would write the file back
+  for (const { id } of deleted) {
+    loaded.delete(id)
+    dirty.delete(id)
+    imageFiles.delete(id)
+  }
+  manifest.conversations = kept
+  replacedModes.forEach((mode) => newConversation(mode))
+  // Index first: it must never list a conversation whose file is already gone
   await flushConversations()
-  const entry = manifest.conversations.find((item) => item.id === id)!
-  await unlink(join(directory(), `${entry.id}.json`))
-  await rm(assetDirectory(id), { recursive: true, force: true })
-  loaded.delete(id)
-  imageFiles.delete(id)
-  manifest.conversations = manifest.conversations.filter((item) => item.id !== id)
-  if (manifest.active[entry.mode] === id) newConversation(entry.mode)
-  await flushConversations()
+  await Promise.all(
+    deleted.flatMap(({ id }) => [
+      rm(join(directory(), `${id}.json`), { force: true }),
+      rm(assetDirectory(id), { recursive: true, force: true })
+    ])
+  )
 }
 
 export async function exportConversation(id: string): Promise<string> {

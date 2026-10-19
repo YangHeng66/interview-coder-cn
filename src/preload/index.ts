@@ -74,6 +74,10 @@ const api = {
     ipcRenderer.invoke('deleteConversation', id) as Promise<
       Record<AssistantMode, ConversationView>
     >,
+  deleteConversations: (ids: string[]) =>
+    ipcRenderer.invoke('deleteConversations', ids) as Promise<
+      Record<AssistantMode, ConversationView>
+    >,
   exportConversation: (id: string) =>
     ipcRenderer.invoke('exportConversation', id) as Promise<string>,
   generateReviewReport: (conversationIds: string[]) =>
