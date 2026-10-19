@@ -45,7 +45,7 @@ src/
 │   │   ├── mock-interview.ts  # Mock interview start/end; job-profile brief captured at start
 │   │   ├── personas.ts        # System prompts for persona conversations (review, mock-interview)
 │   │   ├── knowledge-context.ts # Knowledge retrieval for a request (+ optional AI query rewrite)
-│   │   ├── window-control.ts  # Always-on-top guard, soft hide (Windows), opacity, window movement
+│   │   ├── window-control.ts  # Always-on-top guard, show/hide toggle, opacity, window movement
 │   │   ├── events.ts          # sendChatEvent / sendVisionEvent: forward to renderer + record in conversation
 │   │   └── chat-documents.ts, messages.ts, errors.ts  # Pure helpers (unit tested)
 │   ├── ai.ts                # Vercel AI SDK integration, streaming functions

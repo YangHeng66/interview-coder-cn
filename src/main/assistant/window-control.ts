@@ -1,8 +1,7 @@
-import { screen } from 'electron'
-import type { BrowserWindow, Rectangle } from 'electron'
+import type { BrowserWindow } from 'electron'
 import appConfig from '../../../app.config.json'
 import { applyContentProtection } from '../content-protection'
-import { showToolbar, hideToolbar, reassertToolbarTopMost } from '../toolbar-window'
+import { showToolbar, reassertToolbarTopMost } from '../toolbar-window'
 import { state } from '../state'
 
 const MOVE_STEP = appConfig.interface.moveStep
@@ -14,8 +13,6 @@ const FRONT_RELATIVE_LEVEL = 100
 const BACKGROUND_GUARD_INTERVAL = 2000
 let frontReassertTimer: NodeJS.Timeout | null = null
 let backgroundGuardTimer: NodeJS.Timeout | null = null
-let isWindowSoftHidden = false
-let softHiddenBounds: Rectangle | null = null
 
 /**
  * Reassert always-on-top. `aggressive` also calls moveTop() which
@@ -61,48 +58,6 @@ function stopFrontReassert() {
     clearInterval(frontReassertTimer)
     frontReassertTimer = null
   }
-}
-
-function getOffscreenBounds(window: BrowserWindow): Rectangle {
-  const displays = screen.getAllDisplays()
-  const maxRight = Math.max(...displays.map((display) => display.bounds.x + display.bounds.width))
-  const topMost = Math.min(...displays.map((display) => display.bounds.y))
-  const [width, height] = window.getSize()
-
-  return {
-    x: maxRight + 2000,
-    y: topMost,
-    width,
-    height
-  }
-}
-
-function softHideWindow(window: BrowserWindow) {
-  if (isWindowSoftHidden || window.isDestroyed()) return
-
-  stopFrontReassert()
-  stopBackgroundGuard()
-  softHiddenBounds = window.getBounds()
-  isWindowSoftHidden = true
-
-  window.setOpacity(0)
-  window.setIgnoreMouseEvents(true)
-  window.setBounds(getOffscreenBounds(window))
-  hideToolbar()
-}
-
-function restoreSoftHiddenWindow(window: BrowserWindow) {
-  if (!isWindowSoftHidden || !softHiddenBounds || window.isDestroyed()) return
-
-  applyContentProtection(window)
-  window.setBounds(softHiddenBounds)
-  window.setIgnoreMouseEvents(state.ignoreMouse)
-  window.setOpacity(1)
-
-  isWindowSoftHidden = false
-  softHiddenBounds = null
-  showToolbar()
-  keepWindowInFront(window)
 }
 
 function showMainWindow(window: BrowserWindow) {
@@ -162,22 +117,10 @@ export function toggleMainWindow() {
   const mainWindow = global.mainWindow
   if (!mainWindow || mainWindow.isDestroyed()) return
 
-  if (process.platform === 'win32') {
-    if (isWindowSoftHidden) {
-      restoreSoftHiddenWindow(mainWindow)
-      return
-    }
-
-    if (!mainWindow.isVisible()) {
-      showMainWindow(mainWindow)
-      return
-    }
-
-    softHideWindow(mainWindow)
-    return
-  }
-
+  // A real hide (not moving off-screen): on Windows Chromium marks an off-screen
+  // window as occluded and keeps it blank after it is moved back
   if (mainWindow.isVisible()) {
+    stopFrontReassert()
     stopBackgroundGuard()
     mainWindow.hide()
   } else {
