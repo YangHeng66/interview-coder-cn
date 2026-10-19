@@ -1,70 +1,137 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  AUTO_REPLY_MAX_BATCHES,
-  shouldTriggerAutoReply,
-  TranscriptionAutoReplyQueue
+  AUTO_REPLY_MAX_CHARACTERS,
+  AUTO_REPLY_TURN_GAP_MS,
+  AutoReplyTurn,
+  isMeaningfulSpeech,
+  shouldTriggerAutoReply
 } from './transcription-auto-reply'
 
-describe('TranscriptionAutoReplyQueue', () => {
-  it('merges speech received within the debounce window', () => {
+describe('AutoReplyTurn', () => {
+  beforeEach(() => {
     vi.useFakeTimers()
-    const onReady = vi.fn()
-    const queue = new TranscriptionAutoReplyQueue(onReady)
+  })
 
-    expect(queue.add('第一句')).toBe(true)
-    vi.advanceTimersByTime(400)
-    expect(queue.add('第二句')).toBe(true)
-    vi.advanceTimersByTime(799)
-    expect(onReady).not.toHaveBeenCalled()
-
-    vi.advanceTimersByTime(1)
-    expect(onReady).toHaveBeenCalledTimes(1)
-    expect(queue.peek()).toBe('第一句\n第二句')
-
-    queue.removeFirst()
-    queue.clear()
+  afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('keeps batches ordered while the consumer is busy', () => {
-    vi.useFakeTimers()
-    const queue = new TranscriptionAutoReplyQueue(vi.fn())
+  it('resends the whole turn when the speaker continues after a pause', () => {
+    const turn = new AutoReplyTurn()
 
-    queue.add('先问的问题')
-    vi.advanceTimersByTime(800)
-    queue.add('后问的问题')
-    vi.advanceTimersByTime(800)
+    turn.append('那我们聊聊前端性能')
+    expect(turn.pendingRequest).toBe('那我们聊聊前端性能')
+    turn.markSent()
+    expect(turn.pendingRequest).toBeNull()
 
-    expect(queue.removeFirst()).toBe('先问的问题')
-    expect(queue.removeFirst()).toBe('后问的问题')
-    expect(queue.removeFirst()).toBeNull()
-
-    queue.clear()
-    vi.useRealTimers()
+    turn.append('，你说说重绘和回流有什么区别？')
+    expect(turn.pendingRequest).toBe('那我们聊聊前端性能，你说说重绘和回流有什么区别？')
   })
 
-  it('protects the queue from unbounded batches', () => {
-    const queue = new TranscriptionAutoReplyQueue(vi.fn())
-    for (let index = 0; index < AUTO_REPLY_MAX_BATCHES; index += 1) {
-      expect(queue.add(`问题 ${index}`)).toBe(true)
-      queue.flush()
-    }
+  it('does not resend when only punctuation was added', () => {
+    const turn = new AutoReplyTurn()
+    turn.append('你说说重绘和回流有什么区别')
+    turn.markSent()
 
-    expect(queue.add('超出容量的问题')).toBe(false)
+    turn.append('？')
+
+    expect(turn.pendingRequest).toBeNull()
   })
 
-  it('cancels a pending merge when the conversation is cleared', () => {
-    vi.useFakeTimers()
-    const onReady = vi.fn()
-    const queue = new TranscriptionAutoReplyQueue(onReady)
+  it('does not resend for a single extra character', () => {
+    const turn = new AutoReplyTurn()
+    turn.append('先简单做个自我介绍')
+    turn.markSent()
 
-    queue.add('不会发送的问题')
-    queue.clear()
-    vi.advanceTimersByTime(800)
+    turn.append('吧。')
 
-    expect(onReady).not.toHaveBeenCalled()
-    expect(queue.peek()).toBeNull()
-    vi.useRealTimers()
+    expect(turn.pendingRequest).toBeNull()
+  })
+
+  it('drops punctuation left over from the end of the previous turn', () => {
+    const turn = new AutoReplyTurn()
+    turn.append('？最后一道场景题')
+    expect(turn.pendingRequest).toBe('最后一道场景题')
+
+    turn.clear()
+    turn.append('面试官：？最后一道场景题')
+    expect(turn.pendingRequest).toBe('面试官：最后一道场景题')
+  })
+
+  it('holds back a turn that is only a filler word', () => {
+    const turn = new AutoReplyTurn()
+
+    turn.append('对。')
+    expect(turn.pendingRequest).toBeNull()
+
+    turn.append('那你说说怎么减少回流？')
+    expect(turn.pendingRequest).toBe('对。那你说说怎么减少回流？')
+  })
+
+  it('starts a new turn once the speaker has been quiet for the gap', () => {
+    const turn = new AutoReplyTurn()
+    turn.append('第一个问题？')
+    turn.markSent()
+
+    vi.advanceTimersByTime(AUTO_REPLY_TURN_GAP_MS)
+    turn.append('第二个问题？')
+
+    expect(turn.pendingRequest).toBe('第二个问题？')
+  })
+
+  it('stays open while the speaker is still talking', () => {
+    const turn = new AutoReplyTurn()
+    turn.append('最后一道场景题')
+    turn.markSent()
+
+    vi.advanceTimersByTime(AUTO_REPLY_TURN_GAP_MS - 100)
+    turn.touch()
+    vi.advanceTimersByTime(AUTO_REPLY_TURN_GAP_MS - 100)
+    turn.append('，请设计一个完整的方案。')
+
+    expect(turn.pendingRequest).toBe('最后一道场景题，请设计一个完整的方案。')
+  })
+
+  it('keeps a request that could not be sent yet past the gap', () => {
+    const turn = new AutoReplyTurn()
+    turn.append('还没发出去的问题？')
+
+    vi.advanceTimersByTime(AUTO_REPLY_TURN_GAP_MS * 3)
+
+    expect(turn.pendingRequest).toBe('还没发出去的问题？')
+  })
+
+  it('starts a new turn instead of growing past the size limit', () => {
+    const turn = new AutoReplyTurn()
+    turn.append('长'.repeat(AUTO_REPLY_MAX_CHARACTERS - 1))
+    turn.markSent()
+
+    turn.append('新的问题？')
+
+    expect(turn.pendingRequest).toBe('新的问题？')
+  })
+
+  it('drops everything when cleared', () => {
+    const turn = new AutoReplyTurn()
+    turn.append('不会发送的问题？')
+
+    turn.clear()
+
+    expect(turn.pendingRequest).toBeNull()
+  })
+})
+
+describe('isMeaningfulSpeech', () => {
+  it('rejects punctuation and filler words', () => {
+    expect(isMeaningfulSpeech('。')).toBe(false)
+    expect(isMeaningfulSpeech('对。')).toBe(false)
+    expect(isMeaningfulSpeech('嗯，好的，好的')).toBe(false)
+    expect(isMeaningfulSpeech('OK')).toBe(false)
+  })
+
+  it('accepts anything with content beyond fillers', () => {
+    expect(isMeaningfulSpeech('好的，我了解了，那你说说回流')).toBe(true)
+    expect(isMeaningfulSpeech('下一个问题')).toBe(true)
   })
 })
 

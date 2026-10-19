@@ -14,11 +14,11 @@ import {
 import { knowledgeService } from '../knowledge/service'
 import type { AssistantMode } from '../../preload/contracts'
 import {
-  clearAutoReplyQueue,
+  clearAutoReplyTurn,
   detachConversationStream,
-  drainAutoReplyQueue,
   resetChatModels,
   restoreChatModels,
+  sendAutoReplyTurn,
   setAssistantMode
 } from './chat'
 import { sendChatEvent, sendVisionEvent } from './events'
@@ -39,7 +39,7 @@ export function restoreConversationModels() {
 }
 
 function clearKnowledgeScopedConversations(): void {
-  clearAutoReplyQueue()
+  clearAutoReplyTurn()
   if (getCurrentStream()) {
     abortCurrentStream('profile-switch')
     setCurrentStream(null)
@@ -65,7 +65,7 @@ export function transitionConversation<T>(action: () => Promise<T>): Promise<T> 
       return await action()
     } finally {
       endConversationTransition()
-      drainAutoReplyQueue()
+      sendAutoReplyTurn()
     }
   })
   conversationTransitions = operation.then(

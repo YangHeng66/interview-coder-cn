@@ -9,10 +9,11 @@ import {
   getTranscriptionText,
   consumeConfirmedTranscriptionText,
   consumeTranscriptionText,
+  isTranscriptionListening,
   subscribeTranscription
 } from '../transcription'
 import type { TranscriptionEvent } from '../transcription'
-import { shouldTriggerAutoReply, TranscriptionAutoReplyQueue } from '../transcription-auto-reply'
+import { AutoReplyTurn, shouldTriggerAutoReply } from '../transcription-auto-reply'
 import { logTimeline } from '../transcription-timeline'
 import type {
   AssistantMode,
@@ -40,25 +41,24 @@ import {
 
 let chatConversationMessages: ModelMessage[] = []
 
-const autoReplyQueue = new TranscriptionAutoReplyQueue(() => {
-  drainAutoReplyQueue()
-})
+const autoReplyTurn = new AutoReplyTurn()
 let autoReplyNotice: string | null = null
 
 registerStreamPersister('chat', () => saveConversationModels('chat', chatConversationMessages))
-onStreamIdle(() => drainAutoReplyQueue())
+onStreamIdle(() => sendAutoReplyTurn())
 
-export function clearAutoReplyQueue(): void {
-  autoReplyQueue.clear()
+export function clearAutoReplyTurn(): void {
+  autoReplyTurn.clear()
   autoReplyNotice = null
-  sendChatEvent({ type: 'auto-reply-queue', count: 0 })
+  publishAutoReplyState()
 }
 
-function publishAutoReplyQueueState(): void {
-  sendChatEvent({ type: 'auto-reply-queue', count: autoReplyQueue.pendingCount })
+/** Shows a voice turn that is waiting for a busy stream or a fixed configuration */
+function publishAutoReplyState(): void {
+  sendChatEvent({ type: 'auto-reply-queue', count: autoReplyTurn.pendingRequest ? 1 : 0 })
 }
 
-export function interruptChatStream(drainQueue = true): void {
+export function interruptChatStream(sendPendingTurn = true): void {
   const streamContext = getCurrentStream()
   if (!streamContext || streamContext.kind !== 'chat') return
 
@@ -73,7 +73,7 @@ export function interruptChatStream(drainQueue = true): void {
   }
 
   setCurrentStream(null)
-  if (drainQueue) drainAutoReplyQueue()
+  if (sendPendingTurn) sendAutoReplyTurn()
 }
 
 export function setAssistantMode(mode: AssistantMode) {
@@ -82,12 +82,12 @@ export function setAssistantMode(mode: AssistantMode) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('sync-app-state', state)
   }
-  if (mode === 'chat') drainAutoReplyQueue()
+  if (mode === 'chat') sendAutoReplyTurn()
 }
 
-/** Clear the voice queue, then abort whatever is streaming */
+/** Drop the voice turn, then abort whatever is streaming */
 export function detachConversationStream(): void {
-  clearAutoReplyQueue()
+  clearAutoReplyTurn()
   detachCurrentStream()
 }
 
@@ -149,7 +149,12 @@ function notifyAutoReplyIssue(message: string): void {
 }
 
 function handleTranscriptionEvent(event: TranscriptionEvent): void {
-  if (event.isPartial) return
+  const triggers = shouldTriggerAutoReply(event.speaker, activeConversation('chat').persona)
+  if (event.isPartial) {
+    if (triggers) autoReplyTurn.touch()
+    return
+  }
+
   const skip = (why: string) =>
     logTimeline('auto-reply-skip', { speaker: event.speaker, reason: event.reason, why })
   if (isConversationTransitioning()) return skip('transitioning')
@@ -157,9 +162,9 @@ function handleTranscriptionEvent(event: TranscriptionEvent): void {
   if (!state.inCoderPage) return skip('not-coder-page')
   if (state.assistantMode !== 'chat') return skip('vision-mode')
   if (state.transcriptionPaused) return skip('paused')
-  if (!shouldTriggerAutoReply(event.speaker, activeConversation('chat').persona)) {
-    return skip('own-speech')
-  }
+  // The last result after a stop stays in the transcript for a manual send
+  if (!isTranscriptionListening()) return skip('stopped')
+  if (!triggers) return skip('own-speech')
 
   if (!isChatConfigured()) {
     skip('chat-unconfigured')
@@ -167,66 +172,58 @@ function handleTranscriptionEvent(event: TranscriptionEvent): void {
     return
   }
 
-  const pendingText = getTranscriptionText().trim()
-  if (!pendingText) return skip('empty')
-  if (!autoReplyQueue.canAccept(pendingText)) {
-    skip('queue-full')
-    notifyAutoReplyIssue('语音自动回答队列已满，请先停止或清空当前对话')
-    return
-  }
-
   // My confirmed answers ride along with the interviewer's question; a partial
   // I'm still speaking stays in the transcript.
-  const consumedText = consumeConfirmedTranscriptionText().trim()
-  if (consumedText) {
-    autoReplyNotice = null
-    autoReplyQueue.add(consumedText)
-
-    // Voice questions should be able to take over an ongoing chat response.
-    // Use the same user-stop path so the interrupted assistant message is
-    // closed in the renderer before the queued question starts.
-    const currentStream = getCurrentStream()
-    const shouldInterrupt = currentStream?.kind === 'chat'
-    logTimeline('auto-reply-enqueue', {
-      speaker: event.speaker,
-      reason: event.reason,
-      chars: consumedText.length,
-      interrupts: shouldInterrupt ? currentStream.requestId : null,
-      pending: autoReplyQueue.pendingCount
-    })
-    if (shouldInterrupt) {
-      interruptChatStream(false)
-      autoReplyQueue.flush()
-    }
-    publishAutoReplyQueueState()
-  }
+  const fragment = consumeConfirmedTranscriptionText()
+  if (!fragment.trim()) return skip('empty')
+  autoReplyTurn.append(fragment)
+  logTimeline('auto-reply-append', {
+    speaker: event.speaker,
+    reason: event.reason,
+    chars: fragment.length
+  })
+  sendAutoReplyTurn()
 }
 
-export function drainAutoReplyQueue(): void {
+/** Sends the voice turn when it says something new; it replaces the chat answer being written */
+export function sendAutoReplyTurn(): void {
   if (
     isConversationTransitioning() ||
     !settings.transcriptionAutoReply ||
     !state.inCoderPage ||
     state.assistantMode !== 'chat' ||
     state.transcriptionPaused ||
-    getCurrentStream() ||
     !isChatConfigured()
   ) {
     return
   }
 
-  const text = autoReplyQueue.peek()
+  const text = autoReplyTurn.pendingRequest
   if (!text) return
 
+  const currentStream = getCurrentStream()
+  if (currentStream && currentStream.kind !== 'chat') {
+    // A screenshot answer finishes first; onStreamIdle sends the turn
+    publishAutoReplyState()
+    return
+  }
   const validationError = validateChatRequest(text, [], true)
   if (validationError) {
     notifyAutoReplyIssue(validationError)
+    publishAutoReplyState()
     return
   }
 
-  autoReplyQueue.removeFirst()
-  publishAutoReplyQueueState()
+  logTimeline('auto-reply-send', {
+    chars: text.length,
+    interrupts: currentStream?.requestId ?? null
+  })
+  // The user-stop path closes the interrupted answer in the renderer before the turn starts
+  interruptChatStream(false)
+  autoReplyTurn.markSent()
+  autoReplyNotice = null
   acceptChatRequest(text, 'transcription')
+  publishAutoReplyState()
 }
 
 async function runChatRequest(
@@ -407,7 +404,7 @@ export function submitTranscriptionToChat(): ChatRequestResult {
 
 function clearChatConversation(): void {
   if (isConversationTransitioning()) return
-  clearAutoReplyQueue()
+  clearAutoReplyTurn()
   if (getCurrentStream()?.kind === 'chat') {
     abortCurrentStream('clear-chat')
     setCurrentStream(null)
@@ -425,7 +422,7 @@ ipcMain.handle('sendTranscriptionToChat', () => {
 })
 
 ipcMain.handle('clearAutoReplyQueue', () => {
-  clearAutoReplyQueue()
+  clearAutoReplyTurn()
   return true
 })
 
@@ -439,14 +436,14 @@ ipcMain.handle('stopSolutionStream', () => stopCurrentStream())
 subscribeTranscription(handleTranscriptionEvent)
 subscribeAppState((nextState) => {
   if (!nextState.inCoderPage) {
-    clearAutoReplyQueue()
+    clearAutoReplyTurn()
   } else if (nextState.assistantMode === 'chat') {
-    drainAutoReplyQueue()
+    sendAutoReplyTurn()
   }
 })
 subscribeAppSettings((_nextSettings, patch) => {
   if ('transcriptionAutoReply' in patch || 'chatApiKey' in patch || 'chatModel' in patch) {
-    drainAutoReplyQueue()
+    sendAutoReplyTurn()
   }
   if ('transcriptionAutoReply' in patch) {
     autoReplyNotice = null

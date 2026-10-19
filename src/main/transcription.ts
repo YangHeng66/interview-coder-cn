@@ -163,6 +163,15 @@ function schedulePartialFinalization(session: TranscriptionSession): void {
   }, PARTIAL_IDLE_TIMEOUT_MS)
 }
 
+/** Providers repeat unchanged results during silence; only a change counts as speech */
+function publishPartial(session: TranscriptionSession, text: string): void {
+  const speaker = speakerOf(session)
+  const before = transcript.getSpeakerText(speaker)
+  transcript.updatePartial(speaker, text)
+  if (transcript.getSpeakerText(speaker) !== before) publishTranscription(speaker, true)
+  schedulePartialFinalization(session)
+}
+
 function publishStatus(run: TranscriptionRun, status: TranscriptionStatus): void {
   sendToRenderer('transcription-status', { sessionId: run.id, status })
 }
@@ -396,9 +405,7 @@ function attachDashScopeHandlers(session: TranscriptionSession): void {
           transcript.finishSentence(speaker, text)
           publishTranscription(speaker, false, 'provider')
         } else {
-          transcript.updatePartial(speaker, text)
-          publishTranscription(speaker, true)
-          schedulePartialFinalization(session)
+          publishPartial(session, text)
         }
         return
       }
@@ -559,11 +566,7 @@ function handleVolcengineMessage(session: TranscriptionSession, data: WebSocket.
           transcript.finishSentence(speaker, finished.join(''))
           publishTranscription(speaker, false, 'provider')
         }
-        if (partial) {
-          transcript.updatePartial(speaker, partial)
-          publishTranscription(speaker, true)
-          schedulePartialFinalization(session)
-        }
+        if (partial) publishPartial(session, partial)
       }
     }
   }
@@ -787,6 +790,11 @@ function sendAudio(session: TranscriptionSession, audio: Buffer): void {
     )
   }
   session.pendingAudio = audio
+}
+
+/** False as soon as a stop is requested, before the provider delivers its last result */
+export function isTranscriptionListening(): boolean {
+  return isTranscribing
 }
 
 export function getTranscriptionText(): string {

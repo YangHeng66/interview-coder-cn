@@ -3,6 +3,7 @@ import type { TranscriptionSpeaker } from '../preload/contracts'
 import { TranscriptionBuffer } from './transcription-buffer'
 import {
   formatTranscriptionLines,
+  joinTranscriptionText,
   SpeakerTranscript,
   speakerForChannel
 } from './transcription-speakers'
@@ -24,6 +25,27 @@ describe('speakerForChannel', () => {
 
   it('returns null when there is no channel', () => {
     expect(speakerForChannel(null)).toBeNull()
+  })
+})
+
+describe('joinTranscriptionText', () => {
+  it('concatenates unlabeled text directly', () => {
+    expect(joinTranscriptionText('你好', '，欢迎')).toBe('你好，欢迎')
+  })
+
+  it('continues the last line when the next part starts with the same speaker', () => {
+    expect(joinTranscriptionText('我：好的\n面试官：你好', '面试官：，欢迎')).toBe(
+      '我：好的\n面试官：你好，欢迎'
+    )
+  })
+
+  it('starts a new line for a different speaker', () => {
+    expect(joinTranscriptionText('面试官：你好', '我：好的')).toBe('面试官：你好\n我：好的')
+  })
+
+  it('returns the other side when one side is empty', () => {
+    expect(joinTranscriptionText('', '面试官：你好')).toBe('面试官：你好')
+    expect(joinTranscriptionText('你好', '')).toBe('你好')
   })
 })
 

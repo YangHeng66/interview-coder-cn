@@ -1,11 +1,41 @@
 import appConfig from '../../app.config.json'
-import type { ConversationPersona, TranscriptionSpeaker } from '../preload/contracts'
+import {
+  TRANSCRIPTION_SPEAKER_LABELS,
+  type ConversationPersona,
+  type TranscriptionSpeaker
+} from '../preload/contracts'
+import { joinTranscriptionText } from './transcription-speakers'
 
-export const AUTO_REPLY_MERGE_DELAY_MS = appConfig.transcription.autoReplyMergeMs
-export const AUTO_REPLY_MAX_BATCHES = appConfig.transcription.autoReplyMaxBatches
+export const AUTO_REPLY_TURN_GAP_MS = appConfig.transcription.autoReplyTurnGapMs
 export const AUTO_REPLY_MAX_CHARACTERS = appConfig.transcription.autoReplyMaxCharacters
 
 type Timer = ReturnType<typeof setTimeout>
+
+const SPEAKER_LABELS = new RegExp(
+  `^(?:${Object.values(TRANSCRIPTION_SPEAKER_LABELS).join('|')})：`,
+  'gm'
+)
+const NON_CONTENT = /[\s\p{P}\p{S}]/gu
+/** Punctuation the provider adds to the end of the last turn arrives at the start of the next */
+const LEADING_PUNCTUATION = new RegExp(
+  `^((?:${Object.values(TRANSCRIPTION_SPEAKER_LABELS).join('|')})：)?[\\s\\p{P}]+`,
+  'u'
+)
+/** Content characters a turn must gain before it is worth interrupting the answer again */
+const MIN_RESEND_GROWTH = 2
+const FILLERS =
+  /^(?:嗯|啊|哦|噢|呃|额|唔|哈|对|好|是|行|ok|okay|好的|是的|对的|可以|明白|了解|没错|没问题)+$/
+
+/** What was said, without speaker labels, punctuation, spaces or case */
+function spokenContent(text: string): string {
+  return text.replace(SPEAKER_LABELS, '').replace(NON_CONTENT, '').toLowerCase()
+}
+
+/** Punctuation and acknowledgements such as "嗯" or "好的" are not worth an answer */
+export function isMeaningfulSpeech(text: string): boolean {
+  const content = spokenContent(text)
+  return content.length > 0 && !FILLERS.test(content)
+}
 
 /** My speech answers the interviewer, except in a mock interview where my answers are the input */
 export function shouldTriggerAutoReply(
@@ -16,83 +46,64 @@ export function shouldTriggerAutoReply(
 }
 
 /**
- * Collects finalized speech into short conversational batches. The queue does
- * not know about Electron or AI streams; the owner decides when a batch can be
- * started and calls flush through the callback.
+ * What was said since the speaker last went quiet for the turn gap. Every
+ * request carries the whole turn, so speech after a pause resends the complete
+ * question and replaces the answer to its first half instead of answering a
+ * fragment. The owner decides when a request can go out.
  */
-export class TranscriptionAutoReplyQueue {
-  private pendingText = ''
-  private batches: string[] = []
-  private mergeTimer: Timer | null = null
+export class AutoReplyTurn {
+  private text = ''
+  private sentContent = ''
+  private gapTimer: Timer | null = null
+  /** Last change in what is being said; null until speech is seen in this turn */
+  private lastSpeechAt: number | null = null
 
-  constructor(private readonly onReady: () => void) {}
-
-  canAccept(text: string): boolean {
-    const normalized = text.trim()
-    if (!normalized) return true
-
-    const currentCharacters = this.batches.reduce((total, batch) => total + batch.length, 0)
-    const separatorCharacters = this.pendingText ? 1 : 0
-    const projectedCharacters =
-      currentCharacters + this.pendingText.length + separatorCharacters + normalized.length
-    if (projectedCharacters > AUTO_REPLY_MAX_CHARACTERS) return false
-
-    const projectedBatches = this.batches.length + (this.pendingText ? 0 : 1)
-    return projectedBatches <= AUTO_REPLY_MAX_BATCHES
+  /** Speech still coming in keeps the turn open */
+  touch(): void {
+    this.lastSpeechAt = Date.now()
+    if (this.text) this.scheduleGap(this.lastSpeechAt)
   }
 
-  add(text: string): boolean {
-    const normalized = text.trim()
-    if (!normalized) return true
-    if (!this.canAccept(normalized)) return false
-
-    this.pendingText = this.pendingText ? `${this.pendingText}\n${normalized}` : normalized
-    this.scheduleFlush()
-    return true
+  append(fragment: string): void {
+    if (!fragment.trim()) return
+    if (this.text.length + fragment.length > AUTO_REPLY_MAX_CHARACTERS) this.clear()
+    this.text = this.text
+      ? joinTranscriptionText(this.text, fragment)
+      : fragment.replace(LEADING_PUNCTUATION, '$1')
+    // A silence fallback arrives well after the speech it finalizes; the gap counts from the speech
+    this.scheduleGap(this.lastSpeechAt ?? Date.now())
   }
 
-  flush(): void {
-    this.clearTimer()
-    if (!this.pendingText) return
-
-    this.batches.push(this.pendingText)
-    this.pendingText = ''
-    this.onReady()
+  /** The whole turn, when it says something new worth answering */
+  get pendingRequest(): string | null {
+    if (!isMeaningfulSpeech(this.text)) return null
+    // Turns only grow, so the growth since the last request is the new content
+    const growth = spokenContent(this.text).length - this.sentContent.length
+    return growth >= (this.sentContent ? MIN_RESEND_GROWTH : 1) ? this.text.trim() : null
   }
 
-  peek(): string | null {
-    return this.batches[0] ?? null
-  }
-
-  removeFirst(): string | null {
-    return this.batches.shift() ?? null
+  markSent(): void {
+    this.sentContent = spokenContent(this.text)
   }
 
   clear(): void {
-    this.clearTimer()
-    this.pendingText = ''
-    this.batches = []
+    if (this.gapTimer) clearTimeout(this.gapTimer)
+    this.gapTimer = null
+    this.text = ''
+    this.sentContent = ''
+    this.lastSpeechAt = null
   }
 
-  get hasPendingWork(): boolean {
-    return Boolean(this.pendingText || this.batches.length)
-  }
-
-  get pendingCount(): number {
-    return this.batches.length + (this.pendingText ? 1 : 0)
-  }
-
-  private scheduleFlush(): void {
-    this.clearTimer()
-    this.mergeTimer = setTimeout(() => {
-      this.mergeTimer = null
-      this.flush()
-    }, AUTO_REPLY_MERGE_DELAY_MS)
-  }
-
-  private clearTimer(): void {
-    if (!this.mergeTimer) return
-    clearTimeout(this.mergeTimer)
-    this.mergeTimer = null
+  private scheduleGap(from: number): void {
+    if (this.gapTimer) clearTimeout(this.gapTimer)
+    this.gapTimer = setTimeout(
+      () => {
+        this.gapTimer = null
+        // A turn waiting for a busy stream stays open until it goes out
+        if (this.pendingRequest) this.scheduleGap(Date.now())
+        else this.clear()
+      },
+      Math.max(0, from + AUTO_REPLY_TURN_GAP_MS - Date.now())
+    )
   }
 }

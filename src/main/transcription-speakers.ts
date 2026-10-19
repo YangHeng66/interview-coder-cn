@@ -30,6 +30,21 @@ export function formatTranscriptionLines(lines: { speaker: Speaker; text: string
     .join('\n')
 }
 
+const LABEL_PREFIXES = Object.values(TRANSCRIPTION_SPEAKER_LABELS).map((label) => `${label}：`)
+
+function labelOf(line: string): string | null {
+  return LABEL_PREFIXES.find((prefix) => line.startsWith(prefix)) ?? null
+}
+
+/** Appends transcript text taken later; a part continuing the same speaker joins that line */
+export function joinTranscriptionText(earlier: string, later: string): string {
+  if (!earlier) return later
+  if (!later) return earlier
+  const label = labelOf(earlier.slice(earlier.lastIndexOf('\n') + 1))
+  if (label !== labelOf(later)) return `${earlier}\n${later}`
+  return earlier + later.slice(label?.length ?? 0)
+}
+
 type Channel = { buffer: TranscriptionBuffer; order: number | null }
 type HistoryEntry = { speaker: Speaker; text: string; order: number }
 

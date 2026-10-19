@@ -139,4 +139,60 @@ describe('Volcengine replay of the scripted mock interview', () => {
     expect(count(sent, '好在哪里')).toBe(1)
     expect(count(sent, '优化方案')).toBe(1)
   })
+
+  it('asks each question as one whole turn, without fragments or earlier turns', async () => {
+    const transcription = await loadTranscription()
+    const { AutoReplyTurn, isMeaningfulSpeech, shouldTriggerAutoReply } = await import(
+      './transcription-auto-reply'
+    )
+    const turn = new AutoReplyTurn()
+    const requests: string[] = []
+    // Same steps as the chat auto reply, minus the chat stream itself
+    transcription.subscribeTranscription((event) => {
+      if (!shouldTriggerAutoReply(event.speaker, undefined)) return
+      if (event.isPartial) {
+        turn.touch()
+        return
+      }
+      turn.append(transcription.consumeConfirmedTranscriptionText())
+      const request = turn.pendingRequest
+      if (!request) return
+      turn.markSent()
+      requests.push(request)
+    })
+
+    replay()
+
+    const lastAsking = (phrase: string) => requests.findLast((request) => request.includes(phrase))
+    expect(lastAsking('先简单做个自我介绍')).toContain('欢迎参加今天的面试')
+    expect(lastAsking('有什么区别')).toContain('聊聊前端性能')
+    expect(lastAsking('怎么减少回流')).toContain('这个我了解了')
+    expect(lastAsking('好在哪里')).toContain('响应式原理')
+    expect(lastAsking('优化方案')).toContain('最后一道场景题')
+
+    // Volcengine repeats unchanged results while nobody speaks; that is not speech keeping a turn open
+    expect(
+      requests.some((request) => request.includes('我叫张三') && request.includes('聊聊前端性能'))
+    ).toBe(false)
+    for (const request of requests) {
+      expect(request).not.toMatch(/^[\p{P}\s]/u)
+      expect(isMeaningfulSpeech(request)).toBe(true)
+      // A turn never carries an earlier question along
+      expect(count(request, '？') + count(request, '吧。')).toBeLessThanOrEqual(2)
+    }
+    expect(
+      requests.some((request) => request.includes('欢迎参加') && request.includes('回流'))
+    ).toBe(false)
+  })
+
+  it('stops listening before the provider delivers the last result', async () => {
+    const transcription = await loadTranscription()
+    handlers.get('start-transcription')!({}, VOLCENGINE_CONFIG, 'stop-run', undefined)
+    sockets.at(-1)!.emit('open')
+    expect(transcription.isTranscriptionListening()).toBe(true)
+
+    void handlers.get('stop-transcription')!()
+
+    expect(transcription.isTranscriptionListening()).toBe(false)
+  })
 })
