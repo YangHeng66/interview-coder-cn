@@ -180,7 +180,13 @@ function canStartVisionRequest(): boolean {
   const mainWindow = global.mainWindow
   if (!mainWindow || mainWindow.isDestroyed() || !state.inCoderPage) return false
   setAssistantMode('screenshot')
-  return Boolean(settings.apiKey.trim())
+  if (settings.apiKey.trim()) return true
+  // Sent directly rather than via sendVisionEvent: a setup hint must not be saved into the conversation
+  mainWindow.webContents.send(
+    'solution-error',
+    '未配置截图模型，请先在设置中填写截图模型的 API Key'
+  )
+  return false
 }
 
 export async function takeScreenshotAndSolve() {
