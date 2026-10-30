@@ -8,6 +8,18 @@
   面向中文用户的 Electron AI 桌面助手，提供截屏分析、文字对话和实时语音转录。
 </p>
 
+## 宣传视频
+
+47 秒了解截图解题、文字对话、实时语音转录、本地岗位知识库和桌面辅助。点击封面观看（1080p，无声）：
+
+<p align="center">
+  <a href="./promo/promo.mp4">
+    <img src="./docs/images/00-promo-video.jpg" alt="桌面多模态 AI 助手宣传视频" width="720" />
+  </a>
+</p>
+
+视频画面由 [`promo/index.html`](./promo/index.html) 的动画逐帧渲染生成，直接用浏览器打开该文件即可循环预览。
+
 ## 功能概览
 
 ### 截图解题

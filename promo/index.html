@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>桌面多模态 AI 助手 · 推广视频</title>
+<style>
+  :root {
+    --ink: #0a0c0f;
+    --ink-2: #13171c;
+    --paper: #eeebe3;
+    --muted: #8b919a;
+    --line: rgba(238, 235, 227, 0.1);
+    --amber: #f5b13d;
+    --teal: #3fc8a8;
+    --sans: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    --display: 'Bahnschrift', 'Noto Sans SC', sans-serif;
+    --mono: 'Cascadia Code', Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--ink); }
+  body { font-family: var(--sans); color: var(--paper); position: relative; -webkit-font-smoothing: antialiased; }
+
+  /* ---------- backdrop ---------- */
+  #bg { position: absolute; inset: 0; overflow: hidden; }
+  .glow { position: absolute; width: 1100px; height: 1100px; border-radius: 50%; filter: blur(140px); opacity: .32; }
+  #glowA { background: var(--amber); }
+  #glowB { background: var(--teal); }
+  #grid {
+    position: absolute; inset: -80px;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 80px 80px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 65% at 50% 50%, #000 20%, transparent 80%);
+    opacity: .55;
+  }
+  #grain {
+    position: absolute; inset: -200px; opacity: .09; mix-blend-mode: overlay; pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  #vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 50; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+  #brand { position: absolute; left: 72px; top: 56px; display: flex; align-items: center; gap: 14px; font-size: 20px; font-weight: 500; letter-spacing: .04em; color: rgba(238,235,227,.8); }
+  #brand img { width: 34px; height: 34px; }
+  #counter { position: absolute; right: 72px; top: 58px; font-family: var(--display); font-size: 22px; letter-spacing: .2em; color: var(--muted); }
+  #counter b { color: var(--amber); font-weight: 600; }
+  #progress { position: absolute; left: 72px; right: 72px; bottom: 52px; height: 2px; background: rgba(238,235,227,.1); }
+  #progress i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, var(--teal), var(--amber)); }
+
+  /* ---------- scenes ---------- */
+  .scene { position: absolute; inset: 0; opacity: 0; will-change: opacity, transform; }
+  .center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+
+  .kicker { font-family: var(--display); font-size: 22px; letter-spacing: .35em; color: var(--amber); text-transform: uppercase; }
+  .num { font-family: var(--display); font-weight: 700; font-size: 210px; line-height: .8; letter-spacing: -.04em;
+         color: transparent; -webkit-text-stroke: 2px rgba(238,235,227,.22); }
+  .h1 { font-size: 92px; font-weight: 700; letter-spacing: -.01em; line-height: 1.12; }
+  .h2 { font-size: 76px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+  .lead { font-size: 30px; color: rgba(238,235,227,.72); line-height: 1.6; font-weight: 400; }
+  .accent { color: var(--amber); }
+  .teal { color: var(--teal); }
+
+  .feature-text { position: absolute; top: 210px; width: 700px; }
+  .feature-text.left { left: 120px; }
+  .feature-text.right { right: 110px; }
+  .feature-text .num { margin-bottom: -40px; }
+  .feature-text .h2 { margin-top: 0; position: relative; }
+  .feature-text .lead { margin-top: 22px; }
+  .bullets { list-style: none; margin-top: 40px; display: grid; gap: 18px; }
+  .bullets li { display: flex; align-items: center; gap: 18px; font-size: 27px; color: rgba(238,235,227,.9); }
+  .bullets li::before { content: ''; width: 10px; height: 10px; border-radius: 2px; background: var(--amber); transform: rotate(45deg); flex: none; }
+  .bullets.teal-dot li::before { background: var(--teal); }
+
+  .window {
+    position: absolute; border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 50px 120px -20px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.4), 0 0 80px -30px var(--glow, rgba(245,177,61,.5));
+    background: #202224;
+  }
+  .window img { display: block; }
+  .reveal-wrap { position: relative; }
+  .caret { position: absolute; left: 0; right: 0; height: 3px; background: var(--amber);
+           box-shadow: 0 0 24px 4px rgba(245,177,61,.7); }
+
+  .key { display: inline-flex; align-items: center; justify-content: center; min-width: 96px; height: 84px; padding: 0 26px;
+         border-radius: 16px; font-family: var(--display); font-size: 32px; font-weight: 600; color: var(--paper);
+         background: linear-gradient(#2a2f37, #1b1f25); border: 1px solid rgba(255,255,255,.14);
+         box-shadow: 0 8px 0 #0c0e12, 0 14px 30px rgba(0,0,0,.5); }
+  .plus { font-family: var(--display); font-size: 34px; color: var(--muted); margin: 0 18px; }
+
+  .chip { display: inline-flex; align-items: center; gap: 12px; padding: 14px 26px; border-radius: 999px;
+          background: rgba(238,235,227,.06); border: 1px solid rgba(238,235,227,.14); font-size: 25px; white-space: nowrap; }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 12px var(--teal); }
+
+  /* scene 1 */
+  .tool { position: absolute; display: flex; align-items: center; gap: 16px; padding: 22px 30px; border-radius: 18px;
+          background: rgba(19,23,28,.85); border: 1px solid rgba(238,235,227,.14); font-size: 30px; font-weight: 500;
+          box-shadow: 0 30px 60px -20px rgba(0,0,0,.7); }
+  .tool .ic { width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--ink); }
+
+  /* scene 5 */
+  .wave-card { position: absolute; left: 120px; top: 290px; width: 1040px; height: 640px; border-radius: 22px;
+               background: rgba(19,23,28,.82); border: 1px solid rgba(238,235,227,.12);
+               box-shadow: 0 50px 100px -30px rgba(0,0,0,.8); padding: 48px 56px; }
+  .wave { display: flex; align-items: center; gap: 9px; height: 200px; }
+  .wave i { flex: 1; border-radius: 6px; background: linear-gradient(var(--teal), rgba(63,200,168,.25)); }
+  .rec { display: flex; align-items: center; gap: 14px; font-size: 22px; color: var(--muted); letter-spacing: .1em; margin-bottom: 26px; }
+  .rec .r { width: 14px; height: 14px; border-radius: 50%; background: #ff5a4f; box-shadow: 0 0 14px #ff5a4f; }
+  .transcript { margin-top: 36px; font-size: 38px; line-height: 1.55; min-height: 120px; font-weight: 500; }
+  .transcript .cur { display: inline-block; width: 3px; height: 40px; background: var(--amber); vertical-align: -6px; margin-left: 4px; }
+  .targets { display: flex; gap: 20px; margin-top: 30px; }
+
+  /* scene 6 */
+  .doc { position: absolute; width: 250px; padding: 22px 24px; border-radius: 14px; background: #f7f5ef; color: #1b1d21;
+         box-shadow: 0 30px 60px -15px rgba(0,0,0,.7); }
+  .doc .tag { display: inline-block; font-family: var(--display); font-weight: 700; font-size: 16px; color: #fff; padding: 4px 10px; border-radius: 6px; }
+  .doc .name { margin-top: 14px; font-size: 22px; font-weight: 700; }
+  .doc .ln { height: 8px; border-radius: 4px; background: #dedad0; margin-top: 10px; }
+  .hit { position: absolute; padding: 16px 24px; border-radius: 14px; background: var(--ink-2); border: 1px solid rgba(63,200,168,.5);
+         font-size: 22px; box-shadow: 0 20px 50px -10px rgba(0,0,0,.8), 0 0 40px -10px rgba(63,200,168,.6); white-space: nowrap; }
+  .hit small { display: block; font-size: 16px; color: var(--teal); letter-spacing: .15em; margin-bottom: 6px; font-family: var(--display); }
+
+  /* scene 7 */
+  .toolbar-wrap { position: absolute; left: 50%; top: 470px; width: 520px; height: 52px; transform-origin: center; }
+  .toolbar-wrap img { width: 520px; height: 52px; border-radius: 12px; display: block; box-shadow: 0 30px 80px -10px rgba(0,0,0,.8); }
+  .tb-glow { position: absolute; top: 6px; width: 40px; height: 40px; border-radius: 10px; border: 1.2px solid var(--amber);
+             box-shadow: 0 0 18px rgba(245,177,61,.8), inset 0 0 12px rgba(245,177,61,.4); }
+
+  /* scene 8 */
+  .stack { display: flex; gap: 16px; margin-top: 54px; }
+  .url { margin-top: 56px; font-family: var(--mono); font-size: 46px; padding: 24px 44px; border-radius: 18px;
+         background: rgba(19,23,28,.85); border: 1px solid rgba(245,177,61,.45); box-shadow: 0 0 60px -15px rgba(245,177,61,.6); }
+  .url span { color: var(--muted); }
+  .star { margin-top: 40px; font-size: 32px; font-weight: 500; }
+  .fine { margin-top: 26px; font-size: 20px; color: var(--muted); letter-spacing: .05em; }
+</style>
+</head>
+<body>
+  <div id="bg">
+    <div class="glow" id="glowA"></div>
+    <div class="glow" id="glowB"></div>
+    <div id="grid"></div>
+  </div>
+
+  <!-- 01 Hook -->
+  <section class="scene" data-start="0" data-end="4.6" id="s1">
+    <div class="tool" id="t1" style="left:260px;top:250px"><span class="ic" style="background:var(--amber)">截</span>截图工具</div>
+    <div class="tool" id="t2" style="left:1300px;top:210px"><span class="ic" style="background:var(--teal)">AI</span>聊天窗口</div>
+    <div class="tool" id="t3" style="left:330px;top:720px"><span class="ic" style="background:#ff7a6b">REC</span>录音转写</div>
+    <div class="tool" id="t4" style="left:1250px;top:740px"><span class="ic" style="background:#9fb4ff">PDF</span>简历 · JD · 笔记</div>
+    <div class="center" id="s1text" style="position:absolute;inset:0">
+      <div class="lead" data-in="0.2" style="font-size:34px">面试准备、技术学习、读懂屏幕上的内容</div>
+      <div class="h1" data-in="0.9" style="margin-top:22px">还在四个窗口之间<span class="accent">来回切换</span>？</div>
+    </div>
+  </section>
+
+  <!-- 02 Title -->
+  <section class="scene center" data-start="4.6" data-end="8.8" id="s2">
+    <img id="logo" src="../build/icon.png" width="168" height="168" alt="" />
+    <div class="kicker" data-in="0.5" style="margin-top:40px">Open Source · Electron Desktop App</div>
+    <div class="h1" data-in="0.7" style="margin-top:22px;font-size:110px">桌面多模态 <span class="accent">AI</span> 助手</div>
+    <div class="lead" data-in="1.1" style="margin-top:26px;font-size:36px">把<span class="accent">截图</span>、<span class="teal">语音</span>和<span style="color:#9fb4ff">岗位资料</span>，放进同一个工作区</div>
+  </section>
+
+  <!-- 03 Screenshot analysis -->
+  <section class="scene" data-start="8.8" data-end="16.4" id="s3">
+    <div class="feature-text left">
+      <div class="num" data-in="0">01</div>
+      <div class="h2" data-in="0.15">截图解题</div>
+      <div class="lead" data-in="0.3">一个快捷键截屏，视觉模型边想边写</div>
+      <div id="keys" data-in="0.45" style="margin-top:44px;display:flex;align-items:center">
+        <span class="key" id="k1">Ctrl</span><span class="plus">+</span><span class="key" id="k2">Enter</span>
+      </div>
+      <ul class="bullets">
+        <li data-in="3.0">流式输出解答，Markdown + 代码高亮</li>
+        <li data-in="3.3">追加截图补全题目，结合上下文追问</li>
+        <li data-in="3.6">算法 / 英语 / 通用场景，可自定义提示词</li>
+      </ul>
+    </div>
+    <div class="window" id="w3" style="left:900px;top:205px;width:900px;height:670px">
+      <div class="reveal-wrap"><img src="../docs/images/01-screenshot-analysis.png" width="900" height="670" alt="" /></div>
+      <div class="caret" id="c3"></div>
+    </div>
+  </section>
+
+  <!-- 04 Text chat -->
+  <section class="scene" data-start="16.4" data-end="23" id="s4">
+    <div class="window" id="w4" style="left:120px;top:205px;width:900px;height:670px;--glow:rgba(63,200,168,.5)">
+      <div class="reveal-wrap"><img src="../docs/images/02-text-chat.png" width="900" height="670" alt="" /></div>
+      <div class="caret" id="c4" style="background:var(--teal);box-shadow:0 0 24px 4px rgba(63,200,168,.7)"></div>
+    </div>
+    <div class="feature-text right" style="width:720px">
+      <div class="num" data-in="0">02</div>
+      <div class="h2" data-in="0.15">文字对话</div>
+      <div class="lead" data-in="0.3">独立的多轮问答工作区，模型随你配</div>
+      <ul class="bullets teal-dot">
+        <li data-in="1.6">内置 DeepSeek，兼容任意 OpenAI 接口</li>
+        <li data-in="1.9">支持 Chat Completions / Responses 协议</li>
+        <li data-in="2.2">附加代码、Markdown、JSON、CSV 文件</li>
+        <li data-in="2.5">截图模型与文字模型分开配置</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 05 Speech -->
+  <section class="scene" data-start="23" data-end="29.8" id="s5">
+    <div class="window" id="w5" style="left:1010px;top:150px;width:900px;height:568px;--glow:transparent">
+      <img src="../docs/images/04-transcription-settings.png" width="900" height="568" alt="" />
+    </div>
+    <div class="feature-text left" style="top:120px;width:900px">
+      <div style="display:flex;align-items:flex-end;gap:36px">
+        <div class="num" data-in="0" style="margin-bottom:0;font-size:150px">03</div>
+        <div>
+          <div class="h2" data-in="0.15" style="font-size:64px">实时语音转录</div>
+        </div>
+      </div>
+    </div>
+    <div class="wave-card" data-in="0.3">
+      <div class="rec"><span class="r" id="recdot"></span>LISTENING · 系统音频 + 麦克风</div>
+      <div class="wave" id="wave"></div>
+      <div class="transcript" id="transcript"></div>
+      <div class="targets">
+        <span class="chip" data-in="4.0"><span class="dot"></span>一键发到文字对话</span>
+        <span class="chip" data-in="4.3"><span class="dot" style="background:var(--amber);box-shadow:0 0 12px var(--amber)"></span>随截图一起提交</span>
+        <span class="chip" data-in="4.6">阿里云百炼 · 火山引擎豆包</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 Knowledge base -->
+  <section class="scene" data-start="29.8" data-end="36.4" id="s6">
+    <div class="feature-text left" style="width:640px">
+      <div class="num" data-in="0">04</div>
+      <div class="h2" data-in="0.15">本地岗位知识库</div>
+      <div class="lead" data-in="0.3">回答结合你的 JD、简历和项目经历</div>
+      <ul class="bullets" style="margin-top:36px">
+        <li data-in="2.6">PDF / DOCX / TXT / Markdown 本机解析</li>
+        <li data-in="2.9">本地索引，只发送命中的少量片段</li>
+        <li data-in="3.2">内置前端通用知识包，开箱即用</li>
+      </ul>
+    </div>
+    <div class="window" id="w6" style="left:900px;top:205px;width:900px;height:670px;--glow:rgba(159,180,255,.45)">
+      <img src="../docs/images/03-knowledge-base.png" width="900" height="670" alt="" />
+    </div>
+    <div class="doc" id="d1"><span class="tag" style="background:#e5534b">PDF</span><div class="name">个人简历.pdf</div><div class="ln"></div><div class="ln" style="width:70%"></div></div>
+    <div class="doc" id="d2"><span class="tag" style="background:#3b7ddd">DOCX</span><div class="name">项目说明.docx</div><div class="ln"></div><div class="ln" style="width:60%"></div></div>
+    <div class="doc" id="d3"><span class="tag" style="background:#2b9a7a">MD</span><div class="name">面试笔记.md</div><div class="ln"></div><div class="ln" style="width:80%"></div></div>
+    <div class="doc" id="d4"><span class="tag" style="background:#c58b1c">JD</span><div class="name">前端开发工程师</div><div class="ln"></div><div class="ln" style="width:50%"></div></div>
+    <div class="hit" id="hit" style="left:1270px;top:800px"><small>SOURCES · 本次命中</small>项目说明.docx · 性能优化 &nbsp;|&nbsp; 浏览器与 Web 平台</div>
+  </section>
+
+  <!-- 07 Desktop helpers -->
+  <section class="scene" data-start="36.4" data-end="41" id="s7">
+    <div class="center" style="position:absolute;left:0;right:0;top:170px">
+      <div class="kicker" data-in="0">05 · Desktop</div>
+      <div class="h2" data-in="0.15" style="margin-top:22px">桌面辅助，随手可用</div>
+    </div>
+    <div class="toolbar-wrap" id="tbw">
+      <img src="../docs/images/05-overlay-toolbar.png" alt="" />
+      <div class="tb-glow" id="tbg"></div>
+    </div>
+    <div class="center" style="position:absolute;left:0;right:0;top:700px">
+      <div style="display:flex;gap:20px">
+        <span class="chip" data-in="1.0">透明置顶窗口</span>
+        <span class="chip" data-in="1.2">鼠标穿透</span>
+        <span class="chip" data-in="1.4">悬浮工具条</span>
+        <span class="chip" data-in="1.6">快捷键自定义</span>
+        <span class="chip" data-in="1.8">透明度 / 位置随调</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 CTA -->
+  <section class="scene center" data-start="41" data-end="47" id="s8">
+    <img src="../build/icon.png" width="110" height="110" alt="" data-in="0" />
+    <div class="h1" data-in="0.15" style="margin-top:30px;font-size:96px">桌面多模态 <span class="accent">AI</span> 助手</div>
+    <div class="stack">
+      <span class="chip" data-in="0.5">Electron 37</span>
+      <span class="chip" data-in="0.6">React 19</span>
+      <span class="chip" data-in="0.7">TypeScript</span>
+      <span class="chip" data-in="0.8">Vercel AI SDK</span>
+      <span class="chip" data-in="0.9">本地检索</span>
+      <span class="chip" data-in="1.0">实时 ASR</span>
+    </div>
+    <div class="url" data-in="1.3"><span>github.com/</span>YangHeng66/interview-coder-cn</div>
+    <div class="star" data-in="1.8">开源可用 · 觉得有用就点个 <span class="accent">★ Star</span></div>
+    <div class="fine" data-in="2.1">CC BY-NC 4.0 · 仅限非商业使用 · API Key 加密保存在本机</div>
+  </section>
+
+  <div id="hud">
+    <div id="brand"><img src="../build/icon.png" alt="" />桌面多模态 AI 助手</div>
+    <div id="counter"></div>
+    <div id="progress"><i id="bar"></i></div>
+  </div>
+  <div id="grain"></div>
+  <div id="vignette"></div>
+  <div id="flash"></div>
+
+<script>
+  const DURATION = 47
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
+  const P = (t, a, b) => clamp((t - a) / (b - a))
+  const eo = (x) => 1 - Math.pow(1 - x, 3)
+  const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
+  const eback = (x) => { const c1 = 1.5, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2) }
+  const lerp = (a, b, x) => a + (b - a) * x
+  const $ = (id) => document.getElementById(id)
+
+  const scenes = [...document.querySelectorAll('.scene')].map((el) => ({
+    el,
+    start: +el.dataset.start,
+    end: +el.dataset.end,
+    risers: [...el.querySelectorAll('[data-in]')].map((r) => ({ el: r, at: +r.dataset.in }))
+  }))
+
+  const wave = $('wave')
+  for (let i = 0; i < 64; i++) wave.appendChild(document.createElement('i'))
+  const bars = [...wave.children]
+
+  const TRANSCRIPT = '能解释一下 React 的并发渲染是怎么工作的吗？'
+
+  // Reveals the window image from the top down, like a streamed answer.
+  function reveal(win, caret, from, frac) {
+    const h = win.offsetHeight
+    const y = lerp(from, h, frac)
+    win.querySelector('.reveal-wrap').style.clipPath = `inset(0 0 ${h - y}px 0)`
+    caret.style.top = `${y - 1}px`
+    caret.style.opacity = frac > 0 && frac < 1 ? 1 : 0
+  }
+
+  const custom = {
+    s1(lt) {
+      const away = eio(P(lt, 2.9, 3.5))
+      $('s1text').style.opacity = 1 - away
+      $('s1text').style.transform = `scale(${1 - 0.06 * away})`
+      $('s1text').style.filter = away > 0 ? `blur(${away * 6}px)` : 'none'
+      const pts = [['t1', -1, -1], ['t2', 1, -1], ['t3', -1, 1], ['t4', 1, 1]]
+      pts.forEach(([id, dx, dy], i) => {
+        const el = $(id)
+        const appear = eback(P(lt, 0.1 + i * 0.12, 0.7 + i * 0.12))
+        const bob = Math.sin(lt * 2 + i * 1.7) * 8
+        const pull = eio(P(lt, 3.4, 4.5))
+        const cx = 960 - (el.offsetLeft + el.offsetWidth / 2)
+        const cy = 540 - (el.offsetTop + el.offsetHeight / 2)
+        el.style.opacity = Math.min(appear, 1 - P(lt, 4.0, 4.5))
+        el.style.transform =
+          `translate(${cx * pull + dx * (1 - appear) * 60}px, ${cy * pull + bob + dy * (1 - appear) * 60}px) ` +
+          `scale(${lerp(0.85, 1, appear) * lerp(1, 0.4, pull)}) rotate(${dx * dy * 3 * (1 - pull)}deg)`
+      })
+    },
+    s2(lt) {
+      const a = eback(P(lt, 0, 0.7))
+      $('logo').style.opacity = P(lt, 0, 0.3)
+      $('logo').style.transform = `scale(${lerp(0.3, 1, a)}) rotate(${lerp(-90, 0, eo(P(lt, 0, 0.8)))}deg)`
+      $('logo').style.filter = `drop-shadow(0 0 ${lerp(0, 60, P(lt, 0.3, 1.2))}px rgba(245,177,61,.55))`
+    },
+    s3(lt) {
+      const press = P(lt, 1.35, 1.45) - P(lt, 1.6, 1.75)
+      ;['k1', 'k2'].forEach((id) => {
+        const k = $(id)
+        k.style.transform = `translateY(${press * 7}px)`
+        k.style.boxShadow = `0 ${8 - press * 7}px 0 #0c0e12, 0 14px 30px rgba(0,0,0,.5)` +
+          (press > 0.2 ? ', 0 0 40px rgba(245,177,61,.6)' : '')
+        k.style.borderColor = press > 0.2 ? 'rgba(245,177,61,.8)' : 'rgba(255,255,255,.14)'
+      })
+      $('flash').style.opacity = 0.75 * (P(lt, 1.42, 1.48) - P(lt, 1.5, 1.95))
+      const w = $('w3')
+      const s = eo(P(lt, 1.5, 2.2))
+      w.style.opacity = s
+      w.style.transform = `translateY(${lerp(60, 0, s)}px) scale(${lerp(0.94, 1, s)})`
+      reveal(w, $('c3'), 72, eio(P(lt, 2.0, 5.6)))
+    },
+    s4(lt) {
+      const w = $('w4')
+      const s = eo(P(lt, 0.1, 0.8))
+      w.style.opacity = s
+      w.style.transform = `translateX(${lerp(-80, 0, s)}px)`
+      reveal(w, $('c4'), 180, eio(P(lt, 0.9, 4.2)))
+    },
+    s5(lt) {
+      const w = $('w5')
+      const s = eo(P(lt, 0.2, 1.0))
+      w.style.opacity = 0.55 * s
+      w.style.transform = `perspective(1600px) rotateY(-16deg) translateX(${lerp(120, 40, s)}px) scale(.82)`
+      const on = P(lt, 0.6, 1.0) * (1 - 0.85 * P(lt, 3.8, 4.3))
+      bars.forEach((b, i) => {
+        const n = Math.abs(Math.sin(i * 0.43 + lt * 7.1) * Math.sin(i * 0.17 - lt * 3.3) + 0.35 * Math.sin(i * 1.3 + lt * 11))
+        const env = Math.sin((i / bars.length) * Math.PI) * 0.6 + 0.4
+        b.style.height = `${8 + 190 * clamp(n * env) * on}px`
+      })
+      $('recdot').style.opacity = 0.4 + 0.6 * Math.abs(Math.sin(lt * 4))
+      const chars = Math.floor(TRANSCRIPT.length * P(lt, 1.1, 3.7))
+      const blink = Math.floor(lt * 2.5) % 2 === 0 || chars < TRANSCRIPT.length
+      $('transcript').innerHTML = TRANSCRIPT.slice(0, chars) + (blink ? '<span class="cur"></span>' : '')
+    },
+    s6(lt) {
+      const w = $('w6')
+      const s = eo(P(lt, 0.1, 0.8))
+      w.style.opacity = s
+      w.style.transform = `translateY(${lerp(50, 0, s)}px)`
+      const starts = [[700, 640], [520, 760], [860, 790], [610, 900]]
+      const target = [990, 300]
+      ;['d1', 'd2', 'd3', 'd4'].forEach((id, i) => {
+        const d = $(id)
+        const appear = eback(P(lt, 0.4 + i * 0.15, 0.9 + i * 0.15))
+        const fly = eio(P(lt, 1.4 + i * 0.22, 2.2 + i * 0.22))
+        const [sx, sy] = starts[i]
+        const x = lerp(sx, target[0], fly)
+        const y = lerp(sy, target[1], fly) - Math.sin(fly * Math.PI) * 120
+        d.style.left = `${x}px`
+        d.style.top = `${y}px`
+        d.style.opacity = Math.min(appear, 1 - P(fly, 0.75, 1))
+        d.style.transform = `scale(${lerp(0.6, 1, appear) * lerp(1, 0.35, fly)}) rotate(${(i % 2 ? 6 : -6) * (1 - fly)}deg)`
+      })
+      const h = eback(P(lt, 3.4, 4.0))
+      $('hit').style.opacity = P(lt, 3.4, 3.7)
+      $('hit').style.transform = `translateY(${lerp(30, 0, h)}px) scale(${lerp(0.9, 1, h)})`
+    },
+    s7(lt) {
+      const s = eback(P(lt, 0.2, 0.9))
+      const wrap = $('tbw')
+      wrap.style.opacity = P(lt, 0.2, 0.5)
+      wrap.style.transform = `translateX(-50%) scale(${lerp(1.4, 2.6, s)})`
+      const k = P(lt, 1.0, 3.8) * 13
+      const idx = Math.floor(k)
+      const f = eio(k - idx)
+      const x = lerp(3 + idx * 36.3, 3 + Math.min(idx + 1, 13) * 36.3, f)
+      const g = $('tbg')
+      g.style.left = `${x}px`
+      g.style.opacity = P(lt, 0.9, 1.1) * (1 - P(lt, 3.9, 4.2))
+    }
+  }
+
+  function renderAt(t) {
+    for (const sc of scenes) {
+      const lt = t - sc.start
+      const visible = t >= sc.start - 0.001 && t < sc.end
+      if (!visible) { sc.el.style.opacity = 0; continue }
+      const fadeIn = sc.start === 0 ? 1 : eo(P(lt, 0, 0.35))
+      const out = P(t, sc.end - 0.45, sc.end)
+      sc.el.style.opacity = sc.end === DURATION ? fadeIn : fadeIn * (1 - out)
+      sc.el.style.transform = `scale(${1 + 0.03 * eio(out)})`
+      sc.el.style.filter = out > 0 ? `blur(${out * 8}px)` : 'none'
+      for (const r of sc.risers) {
+        const p = eo(P(lt, r.at, r.at + 0.6))
+        r.el.style.opacity = p
+        r.el.style.transform = `translateY(${(1 - p) * 34}px)`
+      }
+      custom[sc.el.id]?.(lt)
+    }
+
+    $('glowA').style.transform = `translate(${-300 + Math.sin(t * 0.21) * 260}px, ${-420 + Math.cos(t * 0.17) * 180}px)`
+    $('glowB').style.transform = `translate(${1150 + Math.cos(t * 0.19) * 240}px, ${380 + Math.sin(t * 0.23) * 200}px)`
+    $('grid').style.transform = `translate(${(t * 12) % 80}px, ${(t * 6) % 80}px)`
+    $('grain').style.transform = `translate(${(Math.floor(t * 30) * 37) % 200 - 100}px, ${(Math.floor(t * 30) * 53) % 200 - 100}px)`
+
+    const hudOn = P(t, 8.8, 9.3) * (1 - P(t, 40.6, 41))
+    $('brand').style.opacity = hudOn
+    $('counter').style.opacity = hudOn
+    const idx = [8.8, 16.4, 23, 29.8, 36.4].filter((s) => t >= s).length
+    $('counter').innerHTML = `<b>0${Math.max(idx, 1)}</b> / 05`
+    $('bar').style.width = `${(t / DURATION) * 100}%`
+  }
+
+  window.DURATION = DURATION
+  window.renderAt = renderAt
+
+  // Preview mode: play in real time when opened directly in a browser.
+  if (!location.search.includes('render')) {
+    const t0 = performance.now()
+    const tick = () => { renderAt(((performance.now() - t0) / 1000) % DURATION); requestAnimationFrame(tick) }
+    requestAnimationFrame(tick)
+  } else {
+    renderAt(0)
+  }
+</script>
+</body>
+</html>
