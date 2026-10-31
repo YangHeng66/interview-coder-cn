@@ -12,15 +12,11 @@
 
 ## 宣传视频
 
-47 秒了解截图解题、文字对话、实时语音转录、本地岗位知识库和桌面辅助。点击封面观看（1080p，无声）：
+47 秒了解截图解题、文字对话、实时语音转录、本地岗位知识库和桌面辅助（无声）：
 
-<p align="center">
-  <a href="./promo/promo.mp4">
-    <img src="./docs/images/00-promo-video.jpg" alt="桌面多模态 AI 助手宣传视频" width="720" />
-  </a>
-</p>
+https://github.com/user-attachments/assets/179af526-ffbd-4f0b-90bd-619d7e19548b
 
-视频画面由 [`promo/index.html`](./promo/index.html) 的动画逐帧渲染生成，直接用浏览器打开该文件即可循环预览。
+上方为 720p 版本，1080p 原片见 [`promo/promo.mp4`](./promo/promo.mp4)。视频画面由 [`promo/index.html`](./promo/index.html) 的动画逐帧渲染生成，直接用浏览器打开该文件即可循环预览。
 
 ## 功能概览
 
