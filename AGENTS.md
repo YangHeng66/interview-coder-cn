@@ -208,7 +208,7 @@ A second `BrowserWindow` (`src/main/toolbar-window.ts`) that renders the `/toolb
 
 - All AI calls go through `src/main/ai.ts` using Vercel AI SDK's `streamText()`
 - Provider: `@ai-sdk/openai` with custom `baseURL` (works with any OpenAI-compatible API)
-- Model fallback: `Qwen/Qwen3-VL-32B-Instruct` for SiliconFlow, `gpt-5-mini` otherwise
+- Model fallback: `Qwen/Qwen3-VL-32B-Instruct` for SiliconFlow, `gpt-5.6-terra` otherwise
 - System prompts are maintained in the renderer settings store (`PRESET_SCENE_PROMPTS` in `lib/store/settings.ts`) as "prompt scenes"; the active scene's prompt is synced to the main process as `customPrompt`
 - Three streaming functions: `getSolutionStream` (first screenshot), `getFollowUpStream` (follow-up), `getGeneralStream` (multi-screenshot)
 - Conversation history (`conversationMessages`) is maintained in `shortcuts.ts` as `ModelMessage[]`
@@ -268,7 +268,7 @@ The `.env` file at project root configures the AI provider:
 ```env
 API_BASE_URL="https://openrouter.ai/api/v1"  # OpenAI-compatible API endpoint
 API_KEY="sk-..."                               # API key
-MODEL="gpt-5-mini"                             # Optional: override default model
+MODEL="gpt-5.6-terra"                          # Optional: override default model
 ```
 
 These are read by dotenv in the main process and merged with renderer-side settings (renderer settings take priority when set).
