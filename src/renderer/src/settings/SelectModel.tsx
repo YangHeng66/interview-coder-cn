@@ -17,7 +17,7 @@ const defaultModels = [
   { value: 'Qwen/Qwen3-VL-32B-Instruct', label: 'Qwen/Qwen3-VL-32B-Instruct' },
   { value: 'Qwen/Qwen3-VL-8B-Thinking', label: 'Qwen/Qwen3-VL-8B-Thinking' },
   { value: 'zai-org/GLM-4.5V', label: 'zai-org/GLM-4.5V' },
-  { value: 'gpt-5-mini', label: 'gpt-5-mini' },
+  { value: 'gpt-5.6-terra', label: 'gpt-5.6-terra' },
   { value: 'gpt-5.5', label: 'gpt-5.5' }
 ]
 
