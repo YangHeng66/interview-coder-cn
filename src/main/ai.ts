@@ -30,7 +30,7 @@ function getSystemPrompt(extra?: string) {
 function getModel(_settings: AppSettings) {
   const fallbackModel = _settings.apiBaseURL.includes('siliconflow')
     ? 'Qwen/Qwen3-VL-32B-Instruct'
-    : 'gpt-5-mini'
+    : 'gpt-5.6-terra'
   return _settings.model || fallbackModel
 }
 

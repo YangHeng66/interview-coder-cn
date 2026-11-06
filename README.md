@@ -156,7 +156,7 @@ npm run dev
 ```env
 API_BASE_URL="https://openrouter.ai/api/v1"
 API_KEY="your-api-key"
-MODEL="gpt-5-mini"
+MODEL="gpt-5.6-terra"
 ```
 
 `.env` 仅作为主进程的初始默认值。应用内保存的设置会优先使用，且 `.env` 已被 Git 忽略。
